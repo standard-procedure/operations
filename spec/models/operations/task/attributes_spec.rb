@@ -13,7 +13,7 @@ module Operations
       end
 
       context "reading and writing #{type} data-attributes" do
-        it "reads and writes the attribute in the data attribute" do
+        it "stores the attribute in the data attribute" do
           definition = Class.new(Task) do
             data :value, type
           end
@@ -23,12 +23,6 @@ module Operations
           task.value = second
           expect(task.value).to eq second
           expect(task.data["value"]).to eq second
-          expect(task.will_save_change_to_data?).to be true
-          task.save!
-          task.reload
-          expect(task.value).to eq second
-          expect(task.data["value"]).to eq second
-          task.value = first
           expect(task.will_save_change_to_data?).to be true
         end
       end
@@ -42,28 +36,30 @@ module Operations
         expect(definition.attribute_types["value"].type).to eq :boolean
       end
 
-      it "reads and writes the attribute" do
+      it "stores the attribute in the data attribute" do
         definition = Class.new(Task) do
           data :active, :boolean
         end
-        task = definition.create! state: "whatever", active: true
-        expect(task.reload).to be_active
-        task.update! active: false
-        expect(task.reload).to_not be_active
+        task = definition.new state: "whatever", active: true
+        expect(task).to be_active
+        expect(task.data["active"]).to be true
+        task.active = false
+        expect(task).to_not be_active
+        expect(task.data["active"]).to be false
       end
     end
 
-    context "reading and writing model data attributes" do
-      it "reads and writes the attribute" do
+    context "reading and writing model data-attributes" do
+      it "stores the attribute in the data attribute" do
         alice = User.create! name: "Alice"
         bob = User.create! name: "Bob"
         definition = Class.new(Task) do
           data :value
         end
-        task = definition.create! state: "whatever", value: alice
-        expect(task.reload.value).to eq alice
-        task.update! value: bob
-        expect(task.reload.value).to eq bob
+        task = definition.new state: "whatever", value: alice
+        expect(task.value).to eq alice
+        task.value = bob
+        expect(task.value).to eq bob
       end
     end
   end

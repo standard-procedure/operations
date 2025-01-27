@@ -1,6 +1,11 @@
 module Operations::Task::StateManagement
   extend ActiveSupport::Concern
 
+  included do
+    attribute :state, :string
+    validate :state_is_valid
+  end
+
   class_methods do
     def starts_with(value) = @initial_state = value.to_sym
 
@@ -15,6 +20,10 @@ module Operations::Task::StateManagement
     def state_handlers = @state_handlers ||= {}
 
     def handler_for(state) = state_handlers[state.to_sym]
+  end
+
+  private def state_is_valid
+    errors.add :state, :invalid unless self.class.state_handlers.key? state.to_sym
   end
 
   class ActionHandler
