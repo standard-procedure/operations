@@ -77,8 +77,79 @@ module Operations
       end
     end
 
-    describe "action handlers"
-    describe "decision handlers"
+    describe "action handlers" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class ActionHandlerTest < Task
+        data :next_state, :string
+        data :i_was_here, :boolean, default: false
+
+        starts_with "do_something"
+
+        action "do_something" do
+          self.i_was_here = true
+          go_to next_state
+        end
+
+        action "this" do
+          # nothing
+        end
+
+        action "that" do
+          # nothing
+        end
+      end
+      # standard:disable Lint/ConstantDefinitionInBlock
+
+      it "runs the action" do
+        task = ActionHandlerTest.start next_state: "this", i_was_here: false
+        expect(task.i_was_here).to eq true
+        expect(task.state).to eq "this"
+        expect(task).to be_active
+
+        task = ActionHandlerTest.start next_state: "that", i_was_here: false
+        expect(task.i_was_here).to eq true
+        expect(task.state).to eq "that"
+        expect(task).to be_active
+      end
+    end
+
+    describe "decision handlers" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class DecisionHandlerTest < Task
+        data :value, :boolean
+        data :choice, :string, default: "???"
+
+        starts_with "choose"
+
+        decision "choose" do
+          condition { value? }
+          if_true "truth"
+          if_false "lies"
+        end
+        action "truth" do
+          self.choice = "truth"
+        end
+        action "lies" do
+          self.choice = "lies"
+        end
+      end
+      # standard:disable Lint/ConstantDefinitionInBlock
+
+      it "runs the true handler" do
+        task = DecisionHandlerTest.start value: true
+        expect(task.state).to eq "truth"
+        expect(task.choice).to eq "truth"
+        expect(task).to be_active
+      end
+
+      it "runs the false handler" do
+        task = DecisionHandlerTest.start value: false
+        expect(task.state).to eq "lies"
+        expect(task.choice).to eq "lies"
+        expect(task).to be_active
+      end
+    end
+
     describe "completion handlers" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class CompletionHandlerTest < Task
@@ -88,9 +159,11 @@ module Operations
         end
       end
       # standard:disable Lint/ConstantDefinitionInBlock
+
       it "records the result" do
         task = CompletionHandlerTest.start
         expect(task.results).to eq(hello: "world")
+        expect(task).to be_completed
       end
     end
   end

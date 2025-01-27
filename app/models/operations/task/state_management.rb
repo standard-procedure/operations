@@ -1,13 +1,20 @@
 module Operations::Task::StateManagement
   extend ActiveSupport::Concern
 
+  def go_to(state, message = nil)
+    update!(state: state, status_message: message || state.to_s, data: data)
+    process_current_state
+  end
+
+  def complete(**results) = update! status: "completed", results: results
+
   included do
     attribute :state, :string
     validate :state_is_valid
   end
 
   class_methods do
-    def start(**data) = create!(data.merge(state: initial_state)).tap { |task| task.call }
+    def start(**data) = create!(data.merge(state: initial_state)).tap { |task| task.send :process_current_state }
 
     def starts_with(value) = @initial_state = value.to_sym
 
@@ -24,20 +31,8 @@ module Operations::Task::StateManagement
     def handler_for(state) = state_handlers[state.to_sym]
   end
 
-  def call = handler_for(state).call(self)
-
-  # def go_to(state) = update! state: state
-
-  def complete(**results) = update! results: results
-
-  # def results = data["results"]
-
-  # def method_missing(method, *args, &block)
-  #   return super unless handler = handler_for(method)
-  #   handler.call(self)
-  # end
-
   private def handler_for(state) = self.class.handler_for(state.to_sym)
+  private def process_current_state = handler_for(state).call(self)
   private def state_is_valid
     errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
   end
@@ -69,7 +64,7 @@ module Operations::Task::StateManagement
     def if_false(state) = @false_state = state
 
     def call(operation)
-      result = @condition.nil? ? operation.send(@name) : operation.instance_eval(@condition)
+      result = @condition.nil? ? operation.send(@name) : operation.instance_eval(&@condition)
       operation.go_to result ? @true_state : @false_state
     end
   end
