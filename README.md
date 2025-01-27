@@ -44,11 +44,15 @@ Here's how this would be represented using Operations.
 
 ```ruby
 class DownloadDocument < Operations::Task
-  data :user, "User", required: true
-  data :document, "Document", required: true
-  data :use_filename_scrambler, :boolean, required: true, default: false
+  data :user
+  validates :user, presence: true 
+  data :document
+  validates :document, presence: true 
+  data :use_filename_scrambler, :boolean, default: false
+  validates :user_filename_scrambler, presence: true 
   data :filename, :string, default: ->(task) { task.document.filename.to_s }
-  initial_state :check_authorisation
+  validates :filename, presence: true 
+  starts_with :check_authorisation
 
   decision :check_authorisation do 
     condition { user.can?(:read, document) }
