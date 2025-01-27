@@ -1,6 +1,5 @@
-require "operations/version"
-require "operations/engine"
-
 module Operations
-  # Your code goes here...
+  require "operations/version"
+  require "operations/engine"
+  require "operations/global_id_serialiser"
 end

@@ -1,14 +1,14 @@
 require_relative "lib/operations/version"
 
 Gem::Specification.new do |spec|
-  spec.name        = "standard_procedure_operations"
-  spec.version     = Operations::VERSION
-  spec.authors     = ["Rahoul Baruah"]
-  spec.email       = ["rahoulb@echodek.co"]
-  spec.homepage    = "https://theartandscienceofruby.com/"
-  spec.summary     = "operations: Operations"
-  spec.description = "operations: Operations"
-  spec.license     = "LGPL"
+  spec.name = "standard_procedure_operations"
+  spec.version = Operations::VERSION
+  spec.authors = ["Rahoul Baruah"]
+  spec.email = ["rahoulb@echodek.co"]
+  spec.homepage = "https://theartandscienceofruby.com/"
+  spec.summary = "Operations"
+  spec.description = "Pipelines and State Machines for composable, trackable business logic"
+  spec.license = "LGPL"
 
   spec.metadata["allowed_push_host"] = "https://rubygems.com"
   spec.metadata["homepage_uri"] = spec.homepage
