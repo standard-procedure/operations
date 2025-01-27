@@ -42,6 +42,8 @@ module Operations
         end
         task = definition.new state: "whatever", enabled: true
         expect(task).to be_enabled
+        # same test but a bit more explicit
+        expect(task.enabled?).to be true
         expect(task.data["enabled"]).to be true
         task.enabled = false
         expect(task).to_not be_enabled
