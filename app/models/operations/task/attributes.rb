@@ -3,6 +3,7 @@ module Operations::Task::Attributes
 
   included do
     serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
+    data :results, default: {}
   end
 
   class_methods do
@@ -10,7 +11,7 @@ module Operations::Task::Attributes
     def data(name, cast_type = :string, **options)
       attribute name, cast_type, **options
       define_method(name) do
-        data[name.to_s]
+        data[name.to_s] || options[:default]
       end
       define_method(:"#{name}=") do |value|
         data[name.to_s] = value

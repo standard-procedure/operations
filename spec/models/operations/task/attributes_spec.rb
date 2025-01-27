@@ -64,5 +64,11 @@ module Operations
         expect(task.value).to eq bob
       end
     end
+
+    it "defines a 'results' data-attribute" do
+      expect(Task.attribute_names).to include "results"
+      task = Task.new
+      expect(task.results).to be_kind_of Hash
+    end
   end
 end
