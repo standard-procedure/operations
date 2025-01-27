@@ -7,6 +7,8 @@ module Operations::Task::StateManagement
   end
 
   class_methods do
+    def start(**data) = create!(data.merge(state: initial_state)).tap { |task| task.call }
+
     def starts_with(value) = @initial_state = value.to_sym
 
     def initial_state = @initial_state
@@ -22,6 +24,19 @@ module Operations::Task::StateManagement
     def handler_for(state) = state_handlers[state.to_sym]
   end
 
+  def call = handler_for(state).call(self)
+
+  # def go_to(state) = update! state: state
+
+  def complete(**results) = update! results: results
+
+  # def results = data["results"]
+
+  # def method_missing(method, *args, &block)
+  #   return super unless handler = handler_for(method)
+  #   handler.call(self)
+  # end
+
   private def handler_for(state) = self.class.handler_for(state.to_sym)
   private def state_is_valid
     errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
@@ -33,8 +48,8 @@ module Operations::Task::StateManagement
       @action = action
     end
 
-    def call(operation)
-      @action.nil? ? operation.send(@name) : operation.instance_eval(@action)
+    def call(task)
+      @action.nil? ? task.send(@name) : task.instance_eval(&@action)
     end
   end
 
@@ -60,14 +75,15 @@ module Operations::Task::StateManagement
   end
 
   class CompletionHandler
-    def initialize name, &results
+    def initialize name, &handler
       @name = name.to_sym
-      @results = results
+      @handler = handler
     end
 
-    def call operation
-      results = @results.nil? ? {} : operation.instance_eval(@results)
-      operation.complete(**results)
+    def call task
+      results = {}
+      @handler&.call(results)
+      task.complete(**results)
     end
   end
 end

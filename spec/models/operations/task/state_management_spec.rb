@@ -46,5 +46,52 @@ module Operations
         expect(handler).to_not be_nil
       end
     end
+
+    describe "start" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class StartTest < Task
+        starts_with "initial"
+
+        data :hello, :string, default: "World"
+        data :number, :integer, default: 123
+
+        action "initial" do
+          self.hello = "Goodbye"
+        end
+      end
+      # standard:disable Lint/ConstantDefinitionInBlock
+
+      it "starts the task in the initial state" do
+        task = StartTest.start
+        expect(task.state).to eq "initial"
+      end
+
+      it "sets any given attributes" do
+        task = StartTest.start number: 999
+        expect(task.number).to eq 999
+      end
+
+      it "runs the handler for the initial state" do
+        task = StartTest.start
+        expect(task.hello).to eq "Goodbye"
+      end
+    end
+
+    describe "action handlers"
+    describe "decision handlers"
+    describe "completion handlers" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class CompletionHandlerTest < Task
+        starts_with "done"
+        ends_with "done" do |results|
+          results[:hello] = "world"
+        end
+      end
+      # standard:disable Lint/ConstantDefinitionInBlock
+      it "records the result" do
+        task = CompletionHandlerTest.start
+        expect(task.results).to eq(hello: "world")
+      end
+    end
   end
 end
