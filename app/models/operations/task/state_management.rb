@@ -22,8 +22,9 @@ module Operations::Task::StateManagement
     def handler_for(state) = state_handlers[state.to_sym]
   end
 
+  private def handler_for(state) = self.class.handler_for(state.to_sym)
   private def state_is_valid
-    errors.add :state, :invalid unless self.class.state_handlers.key? state.to_sym
+    errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
   end
 
   class ActionHandler
