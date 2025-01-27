@@ -1,0 +1,7 @@
+fix: true
+parallel: true
+format: progress
+default_ignores: true
+ignore:
+  - 'vendor/**/*'
+  - 'Gemfile.lock'

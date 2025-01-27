@@ -1,0 +1,24 @@
+name: "CI"
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+jobs:
+  specs:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        ruby: ['3.2', '3.3']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - run: bin/rails db:create db:migrate db:test:prepare spec
