@@ -23,5 +23,12 @@ module Operations
         expect(task.errors).to_not include(:state)
       end
     end
+
+    describe "status" do
+      it "defaults to 'active'" do
+        task = Task.new
+        expect(task).to be_active
+      end
+    end
   end
 end

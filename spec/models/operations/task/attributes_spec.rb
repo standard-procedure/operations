@@ -38,14 +38,14 @@ module Operations
 
       it "stores the attribute in the data attribute" do
         definition = Class.new(Task) do
-          data :active, :boolean
+          data :enabled, :boolean
         end
-        task = definition.new state: "whatever", active: true
-        expect(task).to be_active
-        expect(task.data["active"]).to be true
-        task.active = false
-        expect(task).to_not be_active
-        expect(task.data["active"]).to be false
+        task = definition.new state: "whatever", enabled: true
+        expect(task).to be_enabled
+        expect(task.data["enabled"]).to be true
+        task.enabled = false
+        expect(task).to_not be_enabled
+        expect(task.data["enabled"]).to be false
       end
     end
 
