@@ -18,6 +18,9 @@ module Operations
         task = definition.new state: "not valid"
         expect(task).to_not be_valid
         expect(task.errors).to include(:state)
+        task.state = "completed"
+        task.validate
+        expect(task.errors).to_not include(:state)
       end
     end
   end
