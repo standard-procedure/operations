@@ -141,6 +141,15 @@ def is_it_the_weekend?(_)
 end
 ```
 
+A decision can also mark a failure, which will terminate the task.  
+
+```ruby
+decision :authorised? do 
+  if_true :do_some_work 
+  if_false { fail_with "Unauthorised" }
+end
+```
+
 ### Actions
 
 An action handler does some work, then moves to another state.  
@@ -208,6 +217,12 @@ This data is transient and not stored at any point.
 However, the final `results` Hash from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is encoded into JSON, but any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) by using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail as it tries to load the record.  
 
 ### Failures and exceptions
+
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:exception]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
+
+You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results[:failure_message]`.
+
+### Status messages
 
 ### Background operations
 

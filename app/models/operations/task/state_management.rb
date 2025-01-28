@@ -50,14 +50,17 @@ module Operations::Task::StateManagement
 
     def condition(&condition) = @condition = condition
 
-    def if_true(state) = @true_state = state
+    def if_true(state = nil, &handler) = @true_state = state || handler
 
-    def if_false(state) = @false_state = state
+    def if_false(state = nil, &handler) = @false_state = state || handler
 
     def call(task, data = {})
       result = @condition.nil? ? task.send(@name, data) : task.instance_exec(data, &@condition)
-      task.go_to(result ? @true_state : @false_state)
+      next_state = result ? @true_state : @false_state
+      next_state.respond_to?(:call) ? call_handler(task, next_state) : task.go_to(next_state, data)
     end
+
+    private def call_handler(task, handler) = task.instance_eval(&handler)
   end
 
   class CompletionHandler

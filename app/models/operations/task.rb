@@ -13,5 +13,7 @@ module Operations
     end
 
     def complete(**results) = update! status: "completed", results: results
+
+    def fail_with(message) = update! status: "failed", results: {failure_message: message.to_s}
   end
 end

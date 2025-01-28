@@ -56,7 +56,7 @@ module Operations
           # do nothing
         end
       end
-      # standard:disable Lint/ConstantDefinitionInBlock
+      # standard:enable Lint/ConstantDefinitionInBlock
 
       it "starts the task in the initial state" do
         task = StartTest.call
@@ -83,7 +83,7 @@ module Operations
             raise "I should not be here" unless data[:i_was_here]
           end
         end
-        # standard:disable Lint/ConstantDefinitionInBlock
+        # standard:enable Lint/ConstantDefinitionInBlock
 
         it "runs the action" do
           task = ActionHandlerTest.call next_state: "this"
@@ -120,7 +120,7 @@ module Operations
             go_to data[:next_state]
           end
         end
-        # standard:disable Lint/ConstantDefinitionInBlock
+        # standard:enable Lint/ConstantDefinitionInBlock
 
         it "runs the action" do
           task = InlineActionHandlerTest.call next_state: "this", i_was_here: false
@@ -157,7 +157,7 @@ module Operations
             data[:choice] = "lies"
           end
         end
-        # standard:disable Lint/ConstantDefinitionInBlock
+        # standard:enable Lint/ConstantDefinitionInBlock
 
         it "runs the true handler" do
           task = DecisionHandlerTest.call value: true
@@ -193,7 +193,7 @@ module Operations
 
           private def truth_or_lies?(data) = data[:value]
         end
-        # standard:disable Lint/ConstantDefinitionInBlock
+        # standard:enable Lint/ConstantDefinitionInBlock
 
         it "runs the true handler" do
           task = InlineDecisionHandlerTest.call value: true
@@ -212,6 +212,34 @@ module Operations
           expect(task).to be_in_progress
         end
       end
+
+      context "reporting a failure" do
+        # standard:disable Lint/ConstantDefinitionInBlock
+        class DecisionFailureTest < Task
+          starts_with "choose"
+
+          decision "choose" do
+            condition { |data| data[:value] == true }
+            if_true { fail_with "truth" }
+            if_false { fail_with "lies" }
+          end
+        end
+        # standard:enable Lint/ConstantDefinitionInBlock
+
+        it "fails in the true handler" do
+          task = DecisionFailureTest.call value: true
+          expect(task).to be_failed
+          expect(task.state).to eq "choose"
+          expect(task.results[:failure_message]).to eq "truth"
+        end
+
+        it "fails in the false handler" do
+          task = DecisionFailureTest.call value: false
+          expect(task).to be_failed
+          expect(task.state).to eq "choose"
+          expect(task.results[:failure_message]).to eq "lies"
+        end
+      end
     end
 
     describe "completion handlers" do
@@ -222,7 +250,7 @@ module Operations
           results[:hello] = "world"
         end
       end
-      # standard:disable Lint/ConstantDefinitionInBlock
+      # standard:enable Lint/ConstantDefinitionInBlock
 
       it "records the result" do
         task = CompletionHandlerTest.call

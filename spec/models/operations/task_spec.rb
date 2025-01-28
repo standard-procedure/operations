@@ -25,9 +25,44 @@ module Operations
     end
 
     describe "status" do
-      it "defaults to 'active'" do
+      it "defaults to 'in_progress'" do
         task = Task.new
         expect(task).to be_in_progress
+      end
+
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class CompletedStateTest < Task
+        starts_with "go"
+        action "go" do |_|
+          go_to :done
+        end
+        result "done" do |_, results|
+          results[:hello] = "world"
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "is completed after a result is set" do
+        task = CompletedStateTest.call
+        expect(task).to be_completed
+        expect(task.state).to eq "done"
+        expect(task.results).to eq(hello: "world")
+      end
+
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class FailureTest < Task
+        starts_with "go"
+        action "go" do |_|
+          fail_with "BOOM"
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "is failed if a failure is declared" do
+        task = FailureTest.call
+        expect(task).to be_failed
+        expect(task.state).to eq "go"
+        expect(task.results).to eq(failure_message: "BOOM")
       end
     end
   end
