@@ -6,7 +6,7 @@ module Operations
     composed_of :results, class_name: "OpenStruct", constructor: ->(results) { results.to_h }, converter: ->(hash) { OpenStruct.new(hash) }
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
 
-    def self.call(data = {}) = create!(state: initial_state).tap { |task| task.send(:process_current_state, DataCarrier.new(data.merge(_task: task))) }
+    def self.call(data = {}) = create!(state: initial_state).tap { |task| task.send(:process_current_state, DataCarrier.new(data.merge(task: task))) }
 
     def go_to(state, data = {}, message = nil)
       update!(state: state, status_message: message || state.to_s)

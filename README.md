@@ -104,6 +104,7 @@ A decision can also mark a failure, which will terminate the task.
 
 ```ruby
 decision :authorised? do 
+  condition { user.administrator? }
   if_true :do_some_work 
   if_false { fail_with "Unauthorised" }
 end
@@ -114,14 +115,28 @@ An action handler does some work, then moves to another state.
 
 ```ruby 
 action :have_a_party do
-  self.food = buy_some_food_for(number_of_guests)
-  self.beer = buy_some_beer_for(number_of_guests)
-  self.music = plan_a_party_playlist
+  self.food = task.buy_some_food_for(number_of_guests)
+  self.beer = task.buy_some_beer_for(number_of_guests)
+  self.music = task.plan_a_party_playlist
   go_to :send_invitations
 end
 ```
 
-If you omit the `go_to` from your action handler, the operation will stop whilst still being marked as in progress.  
+Again, you could implement the action handler as a method on your task.
+
+```ruby
+action :have_a_party
+
+def have_a_party(data)
+  data.food = buy_some_food_for(data.number_of_guests)
+  data.beer = buy_some_beer_for(data.number_of_guests)
+  data.music = plan_a_party_playlist
+  go_to :send_invitations
+end
+```
+Note that when using a method you need to refer to the `data` parameter directly, when using a block, you need to refer to the `task` - see the section on "Data" for more information.
+
+Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  
 
 ### Results
 A result handler marks the end of an operation, optionally returning some results.  
@@ -135,7 +150,6 @@ result :send_invitations do |results|
   end
 end
 ```
-
 The task will then be marked as `completed?`, the task's state will be `send_invitations` and `results[:invited_friends]` will contain an array of the people you sent invitations to.  
 
 If you don't have any meaningful results, you can omit the block on your result handler.  
@@ -173,7 +187,7 @@ This is provided when you `call` the operation to start it and is passed through
 
 This data is transient and not stored in the database.  
 
-Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.filename = "myfile.txt"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers cannot access any methods or data on the task object itself (apart from calling `go_to` and `fail_with`, so your handlers can perform state transitions).  
+Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.filename = "myfile.txt"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers must use `task.method` to access methods or data on the task object itself.  The exceptions are the `go_to` and `fail_with` methods which the data object forwards on to the task for you.  
 
 Within handlers implemented as methods, these are defined on the task itself, so can access other methods and data available there.  Each method takes a `data` parameter that can be accessed, either as a hash - `data[:some_field]` - or as an attribute - `data.some_field`.  
 
@@ -192,13 +206,14 @@ There is an ActiveRecord migration that creates the `operations_tasks` table.  U
 When you `call` a task, it is written to the database, then whenever a state transition occurs, the record is updated.  
 
 This gives you a number of possibilities: 
+- you can access the results (or error state) of a task after it has completed
 - you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "status messages" below
 - tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "background operations" below
 - the tasks table acts as an audit trail or activity log for your application
 
 However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  
 
-Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired` - removing any tasks whose `deleted_at` date has passed.  
+Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired`, removing any tasks whose `deleted_at` date has passed.  
 
 ### Status messages
 
