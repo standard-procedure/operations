@@ -1,3 +1,5 @@
+require "ostruct"
+
 module Operations
   require "operations/version"
   require "operations/engine"

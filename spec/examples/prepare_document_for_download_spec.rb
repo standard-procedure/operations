@@ -28,7 +28,7 @@ module Examples
       end
 
       result :prepare_download do |results|
-        results[:filename] = filename || document.filename.to_s
+        results.filename = filename || document.filename.to_s
       end
 
       private def authorised?(data) = data.user.can?(:read, data.document)
@@ -53,8 +53,8 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: true
 
       expect(task).to be_completed
-      expect(task.results[:filename]).to include ".pdf"
-      expect(task.results[:filename]).to_not include "document"
+      expect(task.results.filename).to include ".pdf"
+      expect(task.results.filename).to_not include "document"
     end
 
     it "fails if not authorised" do

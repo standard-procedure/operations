@@ -68,7 +68,7 @@ class PrepareDocumentForDownload < Operations::Task
   end
 
   result :prepare_download do |results|
-    results[:filename] = filename || document.filename.to_s
+    results.filename = filename || document.filename.to_s
   end
 
   private def authorised?(data) = data.user.can?(:read, data.document)
@@ -81,7 +81,7 @@ A decision handler evaluates a condition, then changes state depending upon if t
 
 ```ruby
 decision :is_it_the_weekend? do 
-  condition { |_| Date.today.wday.in? [0, 6] }
+  condition { Date.today.wday.in? [0, 6] }
   if_true :have_a_party 
   if_false :go_to_work
 end
@@ -95,7 +95,7 @@ decision :is_it_the_weekend? do
   if_false :go_to_work
 end
 
-def is_it_the_weekend?(_)
+def is_it_the_weekend?(data)
   Date.today.wday.in? [0, 6]
 end
 ```
@@ -113,23 +113,23 @@ end
 An action handler does some work, then moves to another state.  
 
 ```ruby 
-action :have_a_party do |data|
-  data[:food] = buy_some_food_for(data[:number_of_guests])
-  data[:beer] = buy_some_beer_for(data[:number_of_guests])
-  data[:music] = plan_a_party_playlist
-  go_to :send_invitations, data
+action :have_a_party do
+  self.food = buy_some_food_for(number_of_guests)
+  self.beer = buy_some_beer_for(number_of_guests)
+  self.music = plan_a_party_playlist
+  go_to :send_invitations
 end
 ```
 
-You must pass your `data` on to the next state or it will be lost.  And if you omit the `go_to` from your action handler, the operation will stop whilst still being marked as in progress.  
+If you omit the `go_to` from your action handler, the operation will stop whilst still being marked as in progress.  
 
 ### Results
 A result handler marks the end of an operation, optionally returning some results.  
 
 ```ruby
-result :send_invitations do |data, results|
-  results[:invited_friends] = (0..data[:number_of_guests]).collect do |i|
-    friend = data[:friends].pop
+result :send_invitations do |results|
+  results.invited_friends = (0..number_of_guests).collect do |i|
+    friend = friends.pop
     FriendsMailer.with(recipient: friend).party_invitation.deliver_later
     friend 
   end
@@ -155,10 +155,10 @@ class DownloadsController < ApplicationController
     @document = Document.includes(:account).find(params[:id])
     @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: true)
     if @task.completed?
-      @filename = @task.results[:filename]
+      @filename = @task.results.filename
       send_data @document.contents, filename: @filename, disposition: "attachment"
     else
-      render action: "error", message: @task.results[:failure_message], status: 401
+      render action: "error", message: @task.results.failure_message, status: 401
     end
   end
 end
@@ -173,17 +173,32 @@ This is provided when you `call` the operation to start it and is passed through
 
 This data is transient and not stored in the database.  
 
-Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.filename = "myfile.txt"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers cannot access any methods or data on the task object itself (apart from calling `go_to` and `fail_with`).  
+Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.filename = "myfile.txt"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers cannot access any methods or data on the task object itself (apart from calling `go_to` and `fail_with`, so your handlers can perform state transitions).  
 
 Within handlers implemented as methods, these are defined on the task itself, so can access other methods and data available there.  Each method takes a `data` parameter that can be accessed, either as a hash - `data[:some_field]` - or as an attribute - `data.some_field`.  
 
-The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is encoded into JSON, but any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) by using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  However, the deserialisation routine will return the JSON string as `results[:raw_data]`.
+The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - the deserialisation routine will return the JSON string as `results.raw_data`.
 
 ### Failures and exceptions
 
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:exception_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results.exception_message`, `results.exception_class` and `results.exception_backtrace` for the exception's message, class name and backtrace respectively.  
 
-You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results[:failure_message]`.
+You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results.failure_message`.
+
+### Task life-cycle and the database
+
+There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails app:operations:install:migrations` to copy it to your application.  
+
+When you `call` a task, it is written to the database, then whenever a state transition occurs, the record is updated.  
+
+This gives you a number of possibilities: 
+- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "status messages" below
+- tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "background operations" below
+- the tasks table acts as an audit trail or activity log for your application
+
+However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  
+
+Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired` - removing any tasks whose `deleted_at` date has passed.  
 
 ### Status messages
 
@@ -197,6 +212,13 @@ Add this line to your application's Gemfile:
 
 ```ruby
 gem "standard_procedure_operations"
+```
+
+Install and run the migrations:
+
+```sh
+bin/rails app:operations:install:migrations 
+bin/rails db:migrate
 ```
 
 Then create your own operations by inheriting from `Operations::Task`.

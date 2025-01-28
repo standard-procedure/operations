@@ -37,7 +37,7 @@ module Operations
           go_to :done
         end
         result "done" do |results|
-          results[:hello] = "world"
+          results.hello = "world"
         end
       end
       # standard:enable Lint/ConstantDefinitionInBlock
@@ -46,7 +46,7 @@ module Operations
         task = CompletedStateTest.call
         expect(task).to be_completed
         expect(task.state).to eq "done"
-        expect(task.results).to eq(hello: "world")
+        expect(task.results.hello).to eq "world"
       end
 
       # standard:disable Lint/ConstantDefinitionInBlock
@@ -62,7 +62,7 @@ module Operations
         task = FailureTest.call
         expect(task).to be_failed
         expect(task.state).to eq "go"
-        expect(task.results).to eq(failure_message: "BOOM")
+        expect(task.results.failure_message).to eq "BOOM"
       end
     end
 
