@@ -35,7 +35,7 @@ module Examples
       private def use_filename_scrambler?(data) = data[:use_filename_scrambler]
       private def scramble(filename) = "#{Faker::Lorem.word}#{File.extname(filename)}"
     end
-    # standard:disable Lint/ConstantDefinitionInBlock
+    # standard:enable Lint/ConstantDefinitionInBlock
 
     it "returns the original filename" do
       user = User.create! name: "Alice", has_permission: true, within_download_limits: true
