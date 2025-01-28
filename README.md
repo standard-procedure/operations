@@ -50,8 +50,9 @@ class DownloadDocument < Operations::Task
   validates :document, presence: true 
   data :use_filename_scrambler, :boolean, default: false
   validates :user_filename_scrambler, presence: true 
-  data :filename, :string, default: ->(task) { task.document.filename.to_s }
+  data :filename, :string
   validates :filename, presence: true 
+
   starts_with :check_authorisation
 
   decision :check_authorisation do 
@@ -73,12 +74,12 @@ class DownloadDocument < Operations::Task
   end 
 
   action :scramble_filename do 
-    self.filename = "#{Faker::Lorem.word}#{File.extname(filename)}"
+    self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
     go_to :prepare_download
   end
 
   completed :prepare_download do |results|
-    results[:filename] = filename
+    results[:filename] = filename || document.filename.to_s
   end
 end
 ```
