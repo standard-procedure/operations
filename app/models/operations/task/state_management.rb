@@ -1,21 +1,12 @@
 module Operations::Task::StateManagement
   extend ActiveSupport::Concern
 
-  def go_to(state, message = nil)
-    update!(state: state, status_message: message || state.to_s, data: data)
-    process_current_state
-  end
-
-  def complete(**results) = update! status: "completed", results: results
-
   included do
     attribute :state, :string
     validate :state_is_valid
   end
 
   class_methods do
-    def start(**data) = create!(data.merge(state: initial_state)).tap { |task| task.send :process_current_state }
-
     def starts_with(value) = @initial_state = value.to_sym
 
     def initial_state = @initial_state
@@ -32,7 +23,7 @@ module Operations::Task::StateManagement
   end
 
   private def handler_for(state) = self.class.handler_for(state.to_sym)
-  private def process_current_state = handler_for(state).call(self)
+  private def process_current_state(data = {}) = handler_for(state).call(self, data)
   private def state_is_valid
     errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
   end
@@ -43,8 +34,8 @@ module Operations::Task::StateManagement
       @action = action
     end
 
-    def call(task)
-      @action.nil? ? task.send(@name) : task.instance_eval(&@action)
+    def call(task, data = {})
+      @action.nil? ? task.send(@name, data) : task.instance_exec(data, &@action)
     end
   end
 
@@ -63,9 +54,9 @@ module Operations::Task::StateManagement
 
     def if_false(state) = @false_state = state
 
-    def call(operation)
-      result = @condition.nil? ? operation.send(@name) : operation.instance_eval(&@condition)
-      operation.go_to(result ? @true_state : @false_state)
+    def call(task, data = {})
+      result = @condition.nil? ? task.send(@name, data) : task.instance_exec(data, &@condition)
+      task.go_to(result ? @true_state : @false_state)
     end
   end
 
@@ -75,9 +66,9 @@ module Operations::Task::StateManagement
       @handler = handler
     end
 
-    def call task
+    def call(task, data = {})
       results = {}
-      @handler&.call(results)
+      @handler&.call(data, results)
       task.complete(**results)
     end
   end

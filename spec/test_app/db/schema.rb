@@ -22,7 +22,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_161543) do
     t.integer "status", default: 0, null: false
     t.string "state", null: false
     t.string "status_message", default: "", null: false
-    t.text "data", default: "{}"
+    t.text "results", default: "{}"
     t.datetime "delete_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false

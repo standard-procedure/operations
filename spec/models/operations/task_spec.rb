@@ -27,7 +27,7 @@ module Operations
     describe "status" do
       it "defaults to 'active'" do
         task = Task.new
-        expect(task).to be_active
+        expect(task).to be_in_progress
       end
     end
   end
