@@ -65,5 +65,22 @@ module Operations
         expect(task.results).to eq(failure_message: "BOOM")
       end
     end
+
+    describe "call" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class StartTest < Task
+        starts_with "initial"
+
+        action "initial" do |_|
+          # nothing
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "starts the task in the initial state" do
+        task = StartTest.call
+        expect(task.state).to eq "initial"
+      end
+    end
   end
 end
