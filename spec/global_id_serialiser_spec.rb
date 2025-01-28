@@ -37,6 +37,7 @@ RSpec.describe Operations::GlobalIDSerialiser do
       expect(data[:number]).to eq 123
       expect(data[:active]).to eq false
     end
+
     it "replaces GlobalID strings with ActiveRecord models" do
       db = Fabrik::Database.new
       alice = db.users.create :alice, name: "Alice"
@@ -49,6 +50,20 @@ RSpec.describe Operations::GlobalIDSerialiser do
       expect(data[:number]).to eq 123
       expect(data[:active]).to eq false
       expect(data[:user]).to eq alice
+    end
+
+    it "handles errors" do
+      db = Fabrik::Database.new
+      alice = db.users.create :alice, name: "Alice"
+      json = "[{\"hello\":\"world\",\"number\":123,\"active\":false,\"user\":{\"_aj_globalid\":\"#{alice.to_global_id}\"},\"_aj_symbol_keys\":[\"hello\",\"number\",\"active\",\"user\"]}]"
+      alice.destroy
+
+      data = described_class.load(json)
+
+      expect(data).to be_a Hash
+      expect(data[:exception_message]).to include "User"
+      expect(data[:exception_class]).to eq "ActiveJob::DeserializationError"
+      expect(data[:raw_data]).to eq json
     end
   end
 end

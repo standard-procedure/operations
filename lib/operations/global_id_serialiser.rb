@@ -12,6 +12,10 @@ module Operations
   class GlobalIDSerialiser
     def self.dump(data) = ActiveSupport::JSON.dump(ActiveJob::Arguments.serialize([data]))
 
-    def self.load(json) = ActiveJob::Arguments.deserialize(ActiveSupport::JSON.decode(json)).first
+    def self.load(json)
+      ActiveJob::Arguments.deserialize(ActiveSupport::JSON.decode(json)).first
+    rescue => ex
+      {exception_message: ex.message, exception_class: ex.class.name, raw_data: json.to_s}
+    end
   end
 end

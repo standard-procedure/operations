@@ -217,7 +217,7 @@ This is provided when you `call` the operation to start it and is passed through
 
 This data is transient and not stored at any point.  
 
-However, the final `results` Hash from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is encoded into JSON, but any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) by using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail as it tries to load the record.  
+However, the final `results` Hash from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is encoded into JSON, but any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) by using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  However, the deserialisation routine will return the JSON string as `results[:raw_data]`.
 
 ### Failures and exceptions
 
