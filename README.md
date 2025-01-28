@@ -218,13 +218,13 @@ However, the final `results` Hash from any `result` handlers is stored, along wi
 
 ### Failures and exceptions
 
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:exception]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:exception_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
 
 You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results[:failure_message]`.
 
 ### Status messages
 
-### Background operations
+### Background operations and pauses
 
 Coming soon.  
 
