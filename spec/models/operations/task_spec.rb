@@ -11,8 +11,8 @@ module Operations
             if_true :completed
             if_false :failed
           end
-          ends_with :completed
-          ends_with :failed
+          result :completed
+          result :failed
         end
 
         task = definition.new state: "not valid"

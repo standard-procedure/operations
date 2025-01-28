@@ -24,7 +24,7 @@ module Operations::Task::StateManagement
 
     def action(name, &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, &handler)
 
-    def ends_with(name, &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, &results)
+    def result(name, &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, &results)
 
     def state_handlers = @state_handlers ||= {}
 
@@ -65,7 +65,7 @@ module Operations::Task::StateManagement
 
     def call(operation)
       result = @condition.nil? ? operation.send(@name) : operation.instance_eval(&@condition)
-      operation.go_to result ? @true_state : @false_state
+      operation.go_to(result ? @true_state : @false_state)
     end
   end
 

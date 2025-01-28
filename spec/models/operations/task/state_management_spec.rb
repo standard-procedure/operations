@@ -37,7 +37,7 @@ module Operations
 
       it "declares a completed handler" do
         definition = Class.new(Task) do
-          ends_with :all_done do |results|
+          result :all_done do |results|
             results[:job] = "done"
           end
         end
@@ -78,75 +78,154 @@ module Operations
     end
 
     describe "action handlers" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class ActionHandlerTest < Task
-        data :next_state, :string
-        data :i_was_here, :boolean, default: false
+      context "defined on the action" do
+        # standard:disable Lint/ConstantDefinitionInBlock
+        class ActionHandlerTest < Task
+          data :next_state, :string
+          data :i_was_here, :boolean, default: false
 
-        starts_with "do_something"
+          starts_with "do_something"
 
-        action "do_something" do
-          self.i_was_here = true
-          go_to next_state
+          action "do_something" do
+            self.i_was_here = true
+            go_to next_state
+          end
+
+          action "this" do
+            # nothing
+          end
+
+          action "that" do
+            # nothing
+          end
         end
+        # standard:disable Lint/ConstantDefinitionInBlock
 
-        action "this" do
-          # nothing
-        end
+        it "runs the action" do
+          task = ActionHandlerTest.start next_state: "this", i_was_here: false
+          expect(task.i_was_here).to eq true
+          expect(task.state).to eq "this"
+          expect(task).to be_active
 
-        action "that" do
-          # nothing
+          task = ActionHandlerTest.start next_state: "that", i_was_here: false
+          expect(task.i_was_here).to eq true
+          expect(task.state).to eq "that"
+          expect(task).to be_active
         end
       end
-      # standard:disable Lint/ConstantDefinitionInBlock
 
-      it "runs the action" do
-        task = ActionHandlerTest.start next_state: "this", i_was_here: false
-        expect(task.i_was_here).to eq true
-        expect(task.state).to eq "this"
-        expect(task).to be_active
+      context "defined by a method" do
+        # standard:disable Lint/ConstantDefinitionInBlock
+        class InlineActionHandlerTest < Task
+          data :next_state, :string
+          data :i_was_here, :boolean, default: false
 
-        task = ActionHandlerTest.start next_state: "that", i_was_here: false
-        expect(task.i_was_here).to eq true
-        expect(task.state).to eq "that"
-        expect(task).to be_active
+          starts_with "do_something"
+
+          action "do_something"
+
+          action "this" do
+            # nothing
+          end
+
+          action "that" do
+            # nothing
+          end
+
+          private def do_something
+            self.i_was_here = true
+            go_to next_state
+          end
+        end
+        # standard:disable Lint/ConstantDefinitionInBlock
+
+        it "runs the action" do
+          task = InlineActionHandlerTest.start next_state: "this", i_was_here: false
+          expect(task.i_was_here).to eq true
+          expect(task.state).to eq "this"
+          expect(task).to be_active
+
+          task = InlineActionHandlerTest.start next_state: "that", i_was_here: false
+          expect(task.i_was_here).to eq true
+          expect(task.state).to eq "that"
+          expect(task).to be_active
+        end
       end
     end
 
     describe "decision handlers" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class DecisionHandlerTest < Task
-        data :value, :boolean
-        data :choice, :string, default: "???"
+      context "defined by a condition on the decision" do
+        # standard:disable Lint/ConstantDefinitionInBlock
+        class DecisionHandlerTest < Task
+          data :value, :boolean
+          data :choice, :string, default: "???"
 
-        starts_with "choose"
+          starts_with "choose"
 
-        decision "choose" do
-          condition { value? }
-          if_true "truth"
-          if_false "lies"
+          decision "choose" do
+            condition { value? }
+            if_true "truth"
+            if_false "lies"
+          end
+          action "truth" do
+            self.choice = "truth"
+          end
+          action "lies" do
+            self.choice = "lies"
+          end
         end
-        action "truth" do
-          self.choice = "truth"
+        # standard:disable Lint/ConstantDefinitionInBlock
+
+        it "runs the true handler" do
+          task = DecisionHandlerTest.start value: true
+          expect(task.state).to eq "truth"
+          expect(task.choice).to eq "truth"
+          expect(task).to be_active
         end
-        action "lies" do
-          self.choice = "lies"
+
+        it "runs the false handler" do
+          task = DecisionHandlerTest.start value: false
+          expect(task.state).to eq "lies"
+          expect(task.choice).to eq "lies"
+          expect(task).to be_active
         end
       end
-      # standard:disable Lint/ConstantDefinitionInBlock
+      context "defined by a method" do
+        # standard:disable Lint/ConstantDefinitionInBlock
+        class InlineDecisionHandlerTest < Task
+          data :value, :boolean
+          data :choice, :string, default: "???"
 
-      it "runs the true handler" do
-        task = DecisionHandlerTest.start value: true
-        expect(task.state).to eq "truth"
-        expect(task.choice).to eq "truth"
-        expect(task).to be_active
-      end
+          starts_with "truth_or_lies?"
 
-      it "runs the false handler" do
-        task = DecisionHandlerTest.start value: false
-        expect(task.state).to eq "lies"
-        expect(task.choice).to eq "lies"
-        expect(task).to be_active
+          decision "truth_or_lies?" do
+            if_true "truth"
+            if_false "lies"
+          end
+          action "truth" do
+            self.choice = "truth"
+          end
+          action "lies" do
+            self.choice = "lies"
+          end
+
+          private def truth_or_lies? = value?
+        end
+        # standard:disable Lint/ConstantDefinitionInBlock
+
+        it "runs the true handler" do
+          task = InlineDecisionHandlerTest.start value: true
+          expect(task.state).to eq "truth"
+          expect(task.choice).to eq "truth"
+          expect(task).to be_active
+        end
+
+        it "runs the false handler" do
+          task = InlineDecisionHandlerTest.start value: false
+          expect(task.state).to eq "lies"
+          expect(task.choice).to eq "lies"
+          expect(task).to be_active
+        end
       end
     end
 
@@ -154,7 +233,7 @@ module Operations
       # standard:disable Lint/ConstantDefinitionInBlock
       class CompletionHandlerTest < Task
         starts_with "done"
-        ends_with "done" do |results|
+        result "done" do |results|
           results[:hello] = "world"
         end
       end
