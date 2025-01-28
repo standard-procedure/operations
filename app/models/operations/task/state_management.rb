@@ -23,7 +23,7 @@ module Operations::Task::StateManagement
   end
 
   private def handler_for(state) = self.class.handler_for(state.to_sym)
-  private def process_current_state(data = {})
+  private def process_current_state(data)
     handler_for(state).call(self, data)
   rescue => ex
     update! status: "failed", results: {exception_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace}
@@ -38,8 +38,8 @@ module Operations::Task::StateManagement
       @action = action
     end
 
-    def call(task, data = {})
-      @action.nil? ? task.send(@name, data) : task.instance_exec(data, &@action)
+    def call(task, data)
+      @action.nil? ? task.send(@name, data) : data.instance_exec(&@action)
     end
   end
 
@@ -58,13 +58,11 @@ module Operations::Task::StateManagement
 
     def if_false(state = nil, &handler) = @false_state = state || handler
 
-    def call(task, data = {})
-      result = @condition.nil? ? task.send(@name, data) : task.instance_exec(data, &@condition)
+    def call(task, data)
+      result = @condition.nil? ? task.send(@name, data) : data.instance_exec(&@condition)
       next_state = result ? @true_state : @false_state
-      next_state.respond_to?(:call) ? call_handler(task, next_state) : task.go_to(next_state, data)
+      next_state.respond_to?(:call) ? data.instance_eval(&next_state) : task.go_to(next_state, data)
     end
-
-    private def call_handler(task, handler) = task.instance_eval(&handler)
   end
 
   class CompletionHandler
@@ -73,10 +71,10 @@ module Operations::Task::StateManagement
       @handler = handler
     end
 
-    def call(task, data = {})
+    def call(task, data)
       results = {}
-      @handler&.call(data, results)
-      task.complete(**results)
+      data.instance_exec(results, &@handler) unless @handler.nil?
+      task.send :complete, **results
     end
   end
 end

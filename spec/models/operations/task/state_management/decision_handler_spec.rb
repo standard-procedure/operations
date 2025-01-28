@@ -8,17 +8,17 @@ module Operations::Task::StateManagement
         starts_with "choose"
 
         decision "choose" do
-          condition { |data| data[:value] == true }
+          condition { value == true }
           if_true "truth"
           if_false "lies"
         end
 
-        action "truth" do |data|
-          data[:choice] = "truth"
+        action "truth" do
+          self.choice = "truth"
         end
 
-        action "lies" do |data|
-          data[:choice] = "lies"
+        action "lies" do
+          self.choice = "lies"
         end
       end
       # standard:enable Lint/ConstantDefinitionInBlock
@@ -48,14 +48,14 @@ module Operations::Task::StateManagement
           if_true "truth"
           if_false "lies"
         end
-        action "truth" do |data|
-          data[:choice] = "truth"
+        action "truth" do
+          self.choice = "truth"
         end
-        action "lies" do |data|
-          data[:choice] = "lies"
+        action "lies" do
+          self.choice = "lies"
         end
 
-        private def truth_or_lies?(data) = data[:value]
+        private def truth_or_lies?(data) = data.value
       end
       # standard:enable Lint/ConstantDefinitionInBlock
 
@@ -83,7 +83,7 @@ module Operations::Task::StateManagement
         starts_with "choose"
 
         decision "choose" do
-          condition { |data| data[:value] == true }
+          condition { value == true }
           if_true { fail_with "truth" }
           if_false { fail_with "lies" }
         end

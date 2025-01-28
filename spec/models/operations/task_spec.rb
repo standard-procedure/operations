@@ -33,10 +33,10 @@ module Operations
       # standard:disable Lint/ConstantDefinitionInBlock
       class CompletedStateTest < Task
         starts_with "go"
-        action "go" do |_|
+        action "go" do
           go_to :done
         end
-        result "done" do |_, results|
+        result "done" do |results|
           results[:hello] = "world"
         end
       end
@@ -71,7 +71,7 @@ module Operations
       class StartTest < Task
         starts_with "initial"
 
-        action "initial" do |_|
+        action "initial" do
           # nothing
         end
       end
@@ -94,11 +94,11 @@ module Operations
         class MyException < StandardError; end
         starts_with :do_something
 
-        action :do_something do |data|
-          go_to data[:take_a_risk]
+        action :do_something do
+          go_to take_a_risk
         end
 
-        decision :some_risky_decision do |_|
+        decision :some_risky_decision do
           condition { raise MyException.new("BOOM") }
           if_true :some_risky_action
           if_false :some_risky_result

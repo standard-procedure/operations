@@ -7,17 +7,17 @@ module Operations::Task::StateManagement
       class ActionHandlerTest < Operations::Task
         starts_with "do_something"
 
-        action "do_something" do |data|
-          data[:i_was_here] = true
-          go_to data[:next_state], data
+        action "do_something" do
+          self.i_was_here = true
+          go_to next_state
         end
 
-        action "this" do |data|
-          raise "I should not be here" unless data[:i_was_here]
+        action "this" do
+          raise "I should not be here" unless i_was_here
         end
 
-        action "that" do |data|
-          raise "I should not be here" unless data[:i_was_here]
+        action "that" do
+          raise "I should not be here" unless i_was_here
         end
       end
       # standard:enable Lint/ConstantDefinitionInBlock

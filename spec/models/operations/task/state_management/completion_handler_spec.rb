@@ -5,7 +5,7 @@ module Operations::Task::StateManagement
     # standard:disable Lint/ConstantDefinitionInBlock
     class CompletionHandlerTest < Operations::Task
       starts_with "done"
-      result "done" do |data, results|
+      result "done" do |results|
         results[:hello] = "world"
       end
     end

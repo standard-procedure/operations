@@ -17,23 +17,22 @@ module Examples
       end
 
       decision :use_filename_scrambler? do
+        condition { use_filename_scrambler }
         if_true :scramble_filename
         if_false :prepare_download
       end
 
-      action :scramble_filename do |data|
-        data[:filename] = scramble(data[:document].filename.to_s)
-        go_to :prepare_download, data
+      action :scramble_filename do
+        self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
+        go_to :prepare_download
       end
 
-      result :prepare_download do |data, results|
-        results[:filename] = data[:filename] || data[:document].filename.to_s
+      result :prepare_download do |results|
+        results[:filename] = filename || document.filename.to_s
       end
 
-      private def authorised?(data) = data[:user].can?(:read, data[:document])
-      private def within_download_limits?(data) = data[:user].within_download_limits?
-      private def use_filename_scrambler?(data) = data[:use_filename_scrambler]
-      private def scramble(filename) = "#{Faker::Lorem.word}#{File.extname(filename)}"
+      private def authorised?(data) = data.user.can?(:read, data.document)
+      private def within_download_limits?(data) = data.user.within_download_limits?
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
