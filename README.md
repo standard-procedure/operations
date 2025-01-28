@@ -45,17 +45,17 @@ We have five states - three of which are decisions, one is an action and one is 
 Here's how this would be represented using Operations.  
 
 ```ruby
-class DownloadDocument < Operations::Task
+class PrepareDocumentForDownload < Operations::Task
   starts_with :authorised?
 
   decision :authorised? do 
     if_true :within_download_limits? 
-    if_false :fail, "unauthorised"
+    if_false { fail_with "unauthorised"}
   end
 
   decision :within_download_limits? do 
     if_true :check_filename_scrambler 
-    if_false :fail, "download_limit_reached"
+    if_false { fail_with "download_limit_reached"}
   end 
 
   decision :use_filename_scrambler? do 
@@ -82,19 +82,19 @@ end
 Alternatively, you can define your conditions and actions within blocks - the two versions are equivalent.
 
 ```ruby
-class DownloadDocument < Operations::Task
+class PrepareDocumentForDownload < Operations::Task
   starts_with :check_authorisation
 
   decision :check_authorisation do 
     condition { |data| data[:user].can?(:read, data[:document]) }
     if_true :check_download_limits 
-    if_false :fail, "unauthorised"
+    if_false { fail_with "unauthorised"}
   end
 
   decision :check_download_limits do 
     condition { |data| data[:user].within_download_limits? }
     if_true :check_filename_scrambler 
-    if_false :fail, "download_limit_reached"
+    if_false { fail_with "download_limit_reached"}
   end 
 
   decision :check_filename_scrambler do 
@@ -114,7 +114,7 @@ class DownloadDocument < Operations::Task
 end
 ```
 
-Personally, I prefer using methods for decisions - that way the decision block is just about managing the state transition.   For actions, I prefer embedding the block to highlight the `go_to` state transition at the end.  The [DownloadDocument example](spec/examples/download_document_spec.rb) uses methods for decisions, and a mix of methods and blocks for actions.  
+Personally, I prefer using methods for decisions - that way the decision block is just about managing the state transition.   For actions, I prefer embedding the block to highlight the `go_to` state transition at the end.  The [PrepareDocumentForDownload example](spec/examples/prepare_document_for_download_spec.rb) uses methods for decisions, and a mix of methods and blocks for actions.  
 
 ### Decisions
 
@@ -191,15 +191,18 @@ In this case, the task will be marked as `completed?`, the task's state will be 
 
 ### Calling an operation
 
-You would use this `DownloadDocument` operation like so:
+You would use this `PrepareDocumentForDownload` operation like so:
 ```ruby
 class DownloadsController < ApplicationController 
   def show 
     @document = Document.includes(:account).find(params[:id])
-    @filename = DownloadDocument.call(user: Current.user, document: @document, use_filename_scrambler: true)[:filename]
-    send_data @document.contents, filename: @filename, disposition: "attachment"
-  rescue Operations::Failed => failure 
-    render action: "error", message: failure.message, status: 401
+    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: true)
+    if @task.completed?
+      @filename = @task.results[:filename]
+      send_data @document.contents, filename: @filename, disposition: "attachment"
+    else
+      render action: "error", message: @task.results[:failure_message], status: 401
+    end
   end
 end
 ```
@@ -210,7 +213,7 @@ OK - so that's a pretty longwinded way of performing a simple task.  But, in Col
 
 Each operation carries its own, mutable, data for the duration of the operation.  
 
-This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  If you modify the data then that modification is passed on to the next handler.  For example, the `data[:filename]` in the [DownloadDocument example](spec/examples/download_document_spec.rb) is blank when the operation is started, but may be set if the `scramble_filename` action is called.  The final `prepare_download` result then examines it to see if it should use the scrambled filename or the original one from the document.  
+This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  If you modify the data then that modification is passed on to the next handler.  For example, the `data[:filename]` in the [PrepareDocumentForDownload example](spec/examples/prepare_document_for_download_spec.rb) is blank when the operation is started, but may be set if the `scramble_filename` action is called.  The final `prepare_download` result then examines it to see if it should use the scrambled filename or the original one from the document.  
 
 This data is transient and not stored at any point.  
 
