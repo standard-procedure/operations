@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.description = "Pipelines and State Machines for composable, trackable business logic"
   spec.license = "LGPL"
 
-  spec.metadata["allowed_push_host"] = "https://rubygems.com"
+  spec.metadata["allowed_push_host"] = "https://rubygems.org"
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/standard-procedure/operations"
   spec.metadata["changelog_uri"] = "https://github.com/standard-procedure/operations/releases"
