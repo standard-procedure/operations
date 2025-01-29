@@ -34,7 +34,7 @@ START -> CHECK AUTHORISATION
          THEN -> PREPARE DOWNLOAD
 
          PREPARE DOWNLOAD
-         Get the document's download URL and filename and return it as the results of this operation
+         Return the document's filename so it can be used when sending the document to the end user
          DONE
 ```
 
@@ -59,15 +59,15 @@ class PrepareDocumentForDownload < Operations::Task
   decision :use_filename_scrambler? do
     condition { use_filename_scrambler }
     if_true :scramble_filename
-    if_false :prepare_download
+    if_false :return_filename
   end
 
   action :scramble_filename do
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-    go_to :prepare_download
+    go_to :return_filename
   end
 
-  result :prepare_download do |results|
+  result :return_filename do |results|
     results.filename = filename || document.filename.to_s
   end
 
@@ -76,8 +76,12 @@ class PrepareDocumentForDownload < Operations::Task
 end
 ```
 
+The five states are represented as three [decision](#decisions) handlers, one [action](#actions) handler and a [result](#results) handler.  
+
 ### Decisions
 A decision handler evaluates a condition, then changes state depending upon if the result is true or false. 
+
+It's up to you whether you define the condition as a block, as part of the decision handler, or as a method on the task object.  
 
 ```ruby
 decision :is_it_the_weekend? do 
@@ -86,9 +90,7 @@ decision :is_it_the_weekend? do
   if_false :go_to_work
 end
 ```
-
-The condition can alternatively be evaluated by a method with the same name as the decision.  
-
+Or
 ```ruby
 decision :is_it_the_weekend? do 
   if_true :have_a_party 
@@ -99,9 +101,7 @@ def is_it_the_weekend?(data)
   Date.today.wday.in? [0, 6]
 end
 ```
-
 A decision can also mark a failure, which will terminate the task.  
-
 ```ruby
 decision :authorised? do 
   condition { user.administrator? }
@@ -121,8 +121,7 @@ action :have_a_party do
   go_to :send_invitations
 end
 ```
-
-Again, you could implement the action handler as a method on your task.
+Again, instead of using a block in the action handler, you could provide a method to do the work.
 
 ```ruby
 action :have_a_party
@@ -134,40 +133,43 @@ def have_a_party(data)
   go_to :send_invitations
 end
 ```
-Note that when using a method you need to refer to the `data` parameter directly, when using a block, you need to refer to the `task` - see the section on "Data" for more information.
+Note that when using a method you need to refer to the `data` parameter directly, when using a block, you need to refer to the `task` - see the section on "[Data](#data-and-results)" for more information.
 
 Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  
 
 ### Results
-A result handler marks the end of an operation, optionally returning some results.  
+A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored in the database (as many operations may have a large set of working data).  
 
 ```ruby
-result :send_invitations do |results|
-  results.invited_friends = (0..number_of_guests).collect do |i|
+action :send_invitations do 
+  self.invited_friends = (0..number_of_guests).collect do |i|
     friend = friends.pop
     FriendsMailer.with(recipient: friend).party_invitation.deliver_later
     friend 
   end
+  go_to :ready_to_party
+end
+
+result :ready_to_party do |results|
+  results.invited_friends = invited_friends
 end
 ```
-The task will then be marked as `completed?`, the task's state will be `send_invitations` and `results[:invited_friends]` will contain an array of the people you sent invitations to.  
+After this result handler has executed, the task will then be marked as `completed?`, the task's state will be `ready_to_party` and `results.invited_friends` will contain an array of the people you sent invitations to.  
 
 If you don't have any meaningful results, you can omit the block on your result handler.  
-
 ```ruby
 result :go_to_work
 ```
-
-In this case, the task will be marked as `completed?`, the task's state will be `go_to_work` and `results` will be an empty hash.  
+In this case, the task will be marked as `completed?`, the task's state will be `go_to_work` and `results` will be empty.  
 
 ### Calling an operation
-You would use this [PrepareDocumentForDownload](spec/examples/prepare_document_for_download_spec.rb) operation like so:
+You would use the earlier [PrepareDocumentForDownload](spec/examples/prepare_document_for_download_spec.rb) operation in a controller like this:
 
 ```ruby
 class DownloadsController < ApplicationController 
   def show 
     @document = Document.includes(:account).find(params[:id])
-    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: true)
+    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: @document.account.use_filename_scrambler?)
     if @task.completed?
       @filename = @task.results.filename
       send_data @document.contents, filename: @filename, disposition: "attachment"
@@ -178,20 +180,18 @@ class DownloadsController < ApplicationController
 end
 ```
 
-OK - so that's a pretty longwinded way of performing a simple task.  But, in Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions - so being able to lay out the state transitions in this way definitely helps comprehension of what is going on.  
+OK - so that's a pretty longwinded way of performing a simple task.  But, in Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions (as there are a number of feature flags and per-account configuration options).  When you get to complex decision trees like that, being able to lay them out as state transitions becomes invaluable.  
 
 ### Data and results
-Each operation carries its own, mutable, data for the duration of the operation.  
+Each operation carries its own, mutable, data for the duration of the operation.  This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  This data is transient and not stored in the database. If you modify the data then that modification is passed on to the next handler.  
 
-This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  If you modify the data then that modification is passed on to the next handler.  For example, the `filename` in the [PrepareDocumentForDownload example](spec/examples/prepare_document_for_download_spec.rb) is blank when the operation is started, but may be set if the `scramble_filename` action is called.  The final `prepare_download` result then examines it to see if it should use the scrambled filename or the original one from the document.  
+For example, in the [DownloadsController](#calling-an-operation) shown above, the `user`, `document` and `use_filename_scrambler` are set within the data object when the operation is started.  But if the `scramble_filename` action is called, it generates a new filename and adds that to the data object as well.  Finally the `return_filename` result handler then returns either the scrambled or the original filename to the caller. 
 
-This data is transient and not stored in the database.  
+Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.my_data = "something important"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers must use `task.method` to access methods or data on the task object itself (as you are not actually within the context of the task object itself).  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task.  
 
-Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.filename = "myfile.txt"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers must use `task.method` to access methods or data on the task object itself.  The exceptions are the `go_to` and `fail_with` methods which the data object forwards on to the task for you.  
+Handlers can alternatively be implemented as methods on the task itself.  This means that they are executed within the context of the task and can methods and variables belonging to the task.  Each handler method receives a `data` parameter which is the data carrier for that task.  Individual items can be accessed as a hash - `data[:my_item]` - or as an attribute - `data.my_item`.  
 
-Within handlers implemented as methods, these are defined on the task itself, so can access other methods and data available there.  Each method takes a `data` parameter that can be accessed, either as a hash - `data[:some_field]` - or as an attribute - `data.some_field`.  
-
-The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using the same mechanism as ActiveJob ([ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments)).  Be aware that if you do store an ActiveRecord model into your `results`, then that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - the deserialisation routine will return the JSON string as `results.raw_data`.
+The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments).  Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results.raw_data`.
 
 ### Failures and exceptions
 
@@ -203,24 +203,27 @@ You can also stop a task at any point by calling `fail_with message`.  This will
 
 There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails app:operations:install:migrations` to copy it to your application.  
 
-When you `call` a task, it is written to the database, then whenever a state transition occurs, the record is updated.  
+When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
 
 This gives you a number of possibilities: 
 - you can access the results (or error state) of a task after it has completed
-- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "status messages" below
-- tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "background operations" below
+- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "[status messages](#status-messages)" below
+- tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "[background operations](#background-operations-and-pauses)" below
 - the tasks table acts as an audit trail or activity log for your application
 
-However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  
-
-Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired`, removing any tasks whose `deleted_at` date has passed.  
+However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired`, removing any tasks whose `deleted_at` date has passed.  
 
 ### Status messages
+
+Documentation coming soon.  
+
+### Child tasks
+
+Coming soon.  
 
 ### Background operations and pauses
 
 Coming soon.  
-
 
 ## Installation
 Add this line to your application's Gemfile:
@@ -229,7 +232,7 @@ Add this line to your application's Gemfile:
 gem "standard_procedure_operations"
 ```
 
-Install and run the migrations:
+Run `bundle install`, copy and run the migrations to add the tasks table to your database:
 
 ```sh
 bin/rails app:operations:install:migrations 
@@ -239,20 +242,20 @@ bin/rails db:migrate
 Then create your own operations by inheriting from `Operations::Task`.
 
 ```ruby
-class MyOperation < Operations::Task
+class DailyLife < Operations::Task
   starts_with :am_i_awake?
 
   decision :am_i_awake? do 
-    if_true :awake 
-    if_false :asleep
+    if_true :live_like_theres_no_tomorrow 
+    if_false :rest_and_recuperate
   end 
 
-  result :awake 
-  result :asleep
+  result :live_like_theres_no_tomorrow 
+  result :rest_and_recuperate
 
-  def am_i_awake? = true
+  def am_i_awake? = (7..23).include?(Time.now.hour)
 end
 ```
 
 ## License
-The gem is available as open source under the terms of the [LGPL License](/LICENSE).  This may or may not make it suitable for your needs
+The gem is available as open source under the terms of the [LGPL License](/LICENSE).  This may or may not make it suitable for your needs.

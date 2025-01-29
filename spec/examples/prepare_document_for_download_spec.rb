@@ -19,15 +19,15 @@ module Examples
       decision :use_filename_scrambler? do
         condition { use_filename_scrambler }
         if_true :scramble_filename
-        if_false :prepare_download
+        if_false :return_filename
       end
 
       action :scramble_filename do
         self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-        go_to :prepare_download
+        go_to :return_filename
       end
 
-      result :prepare_download do |results|
+      result :return_filename do |results|
         results.filename = filename || document.filename.to_s
       end
 
@@ -43,7 +43,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_completed
-      expect(task.results[:filename]).to eq "document.pdf"
+      expect(task.results.filename).to eq "document.pdf"
     end
 
     it "scrambles the original filename" do
@@ -64,7 +64,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_failed
-      expect(task.results[:failure_message]).to eq "unauthorised"
+      expect(task.results.failure_message).to eq "unauthorised"
     end
 
     it "fails if download limits have been reached" do
@@ -74,7 +74,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_failed
-      expect(task.results[:failure_message]).to eq "download_limit_reached"
+      expect(task.results.failure_message).to eq "download_limit_reached"
     end
   end
 end
