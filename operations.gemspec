@@ -12,8 +12,8 @@ Gem::Specification.new do |spec|
 
   spec.metadata["allowed_push_host"] = "https://rubygems.com"
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/standard_procedure"
-  spec.metadata["changelog_uri"] = "https://github.com/standard_procedure"
+  spec.metadata["source_code_uri"] = "https://github.com/standard-procedure/operations"
+  spec.metadata["changelog_uri"] = "https://github.com/standard-procedure/operations/releases"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     Dir["{app,config,db,lib}/**/*", "LICENSE", "Rakefile", "README.md"]
