@@ -1,7 +1,7 @@
 require "rails_helper"
 
 module Operations
-  RSpec.describe Task, type: :model do
+  RSpec.describe Operations::Task::Testing, type: :model do
     # standard:disable Lint/ConstantDefinitionInBlock
     class TaskToBeTested < Operations::Task
       inputs :answer
@@ -54,9 +54,21 @@ module Operations
         end
       end
 
+      it "tests for state changes using a matcher" do
+        TaskToBeTested.handling(:question, answer: 42) do |test|
+          expect(test).to have_moved_to :make_a_fjord
+        end
+      end
+
       it "tests for failures" do
         TaskToBeTested.handling(:question, answer: 99) do |test|
           expect(test.failure_message).to eq "the earth has been demolished"
+        end
+      end
+
+      it "tests for failures using a matcher" do
+        TaskToBeTested.handling(:question, answer: 99) do |test|
+          expect(test).to have_failed_with "the earth has been demolished"
         end
       end
 
@@ -86,9 +98,21 @@ module Operations
         end
       end
 
+      it "tests for state changes using a matcher" do
+        TaskToBeTestedWithMethods.handling(:question, answer: 42) do |test|
+          expect(test).to have_moved_to :make_a_fjord
+        end
+      end
+
       it "tests for failures" do
         TaskToBeTestedWithMethods.handling(:question, answer: 99) do |test|
           expect(test.failure_message).to eq "the earth has been demolished"
+        end
+      end
+
+      it "tests for failures using a matcher" do
+        TaskToBeTestedWithMethods.handling(:question, answer: 99) do |test|
+          expect(test).to have_failed_with "the earth has been demolished"
         end
       end
 

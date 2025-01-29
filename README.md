@@ -265,19 +265,19 @@ MyOperation.handling(:a_failure, some: "data") do |test|
   expect(test).to have_failed_with "oh dear"
 end
 ```
+If you are using RSpec, you must `require "operations/matchers"` to make the matchers available to your specs.  
 
 ## Installation
-Add the gem to your Rails application's Gemfile:
-
+Step 1: Add the gem to your Rails application's Gemfile:
 ```ruby
 gem "standard_procedure_operations"
 ```
-Run `bundle install`, then copy and run the migrations to add the tasks table to your database:
+Step 2: Run `bundle install`, then copy and run the migrations to add the tasks table to your database:
 ```sh
 bin/rails operations:install:migrations 
 bin/rails db:migrate
 ```
-Create your own operations by inheriting from `Operations::Task` and revel in the stateful flowcharts!
+Step 3: Create your own operations by inheriting from `Operations::Task` and revel in the stateful flowcharts!
 ```ruby
 class DailyLife < Operations::Task
   starts_with :am_i_awake?
@@ -293,6 +293,7 @@ class DailyLife < Operations::Task
   def am_i_awake? = (7..23).include?(Time.now.hour)
 end
 ```
+Step 4: If you're using RSpec for testing, add `require "operations/matchers" to your "spec/rails_helper.rb" file.
 
 ## License
 The gem is available as open source under the terms of the [LGPL License](/LICENSE).  This may or may not make it suitable for your needs.
