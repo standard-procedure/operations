@@ -4,6 +4,7 @@ module Examples
   RSpec.describe "README - Document Download example", type: :model do
     # standard:disable Lint/ConstantDefinitionInBlock
     class PrepareDocumentForDownload < Operations::Task
+      inputs :user, :document, :use_filename_scrambler
       starts_with :authorised?
 
       decision :authorised? do

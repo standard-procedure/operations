@@ -7,6 +7,10 @@ module Operations::Task::StateManagement
   end
 
   class_methods do
+    def inputs(*names) = @required_inputs = names.map(&:to_sym)
+
+    def required_inputs = @required_inputs ||= []
+
     def starts_with(value) = @initial_state = value.to_sym
 
     def initial_state = @initial_state
@@ -20,6 +24,10 @@ module Operations::Task::StateManagement
     def state_handlers = @state_handlers ||= {}
 
     def handler_for(state) = state_handlers[state.to_sym]
+
+    def required_inputs_are_present_in?(data) = missing_inputs_from(data).empty?
+
+    def missing_inputs_from(data) = (required_inputs - data.keys.map(&:to_sym))
   end
 
   private def handler_for(state) = self.class.handler_for(state.to_sym)

@@ -44,6 +44,7 @@ Here's how this would be represented using Operations.
 
 ```ruby
 class PrepareDocumentForDownload < Operations::Task
+  inputs :user, :document, :use_filename_scrambler
   starts_with :authorised?
 
   decision :authorised? do
@@ -77,6 +78,8 @@ end
 ```
 
 The five states are represented as three [decision](#decisions) handlers, one [action](#actions) handler and a [result](#results) handler.  
+
+The task also declares that it requires a `user`, `document` and `use_filename_scrambler` parameter to be provided, and also declares its initial state - `authorised?`.  
 
 ### Decisions
 A decision handler evaluates a condition, then changes state depending upon if the result is true or false. 

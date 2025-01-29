@@ -66,6 +66,37 @@ module Operations
       end
     end
 
+    describe "inputs" do
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class InputTest < Task
+        inputs :salutation, :name
+        starts_with :generate_greeting
+        result :generate_greeting do |results|
+          results.greeting = [salutation, name, suffix].compact.join(" ")
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "requires parameters to be passed as input" do
+        expect(InputTest.required_inputs).to include :salutation
+        expect(InputTest.required_inputs).to include :name
+      end
+
+      it "raises an Operations::MissingInputsError if the required inputs are not provided" do
+        expect { InputTest.call }.to raise_error(Operations::MissingInputsError)
+      end
+
+      it "accepts the required inputs" do
+        task = InputTest.call salutation: "Greetings", name: "Alice"
+        expect(task.results.greeting).to eq "Greetings Alice"
+      end
+
+      it "accepts optional inputs" do
+        task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
+        expect(task.results.greeting).to eq "Greetings Alice - lovely to meet you"
+      end
+    end
+
     describe "call" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class StartTest < Task
@@ -82,7 +113,7 @@ module Operations
         expect(task.state).to eq "initial"
       end
 
-      it "is in progress" do
+      it "marks the task as 'in progress'" do
         task = StartTest.call
         expect(task).to be_in_progress
       end
@@ -114,7 +145,7 @@ module Operations
       end
       # standard:enable Lint/ConstantDefinitionInBlock
       context "in actions" do
-        it "records the exception " do
+        it "fails and records the exception details" do
           task = ExceptionTest.call take_a_risk: "some_risky_action"
           expect(task).to be_failed
           expect(task.results[:failure_message]).to eq "BOOM"
@@ -124,7 +155,7 @@ module Operations
       end
 
       context "in decisions" do
-        it "records the exception " do
+        it "fails and records the exception details" do
           task = ExceptionTest.call take_a_risk: "some_risky_decision"
           expect(task).to be_failed
           expect(task.results[:failure_message]).to eq "BOOM"
@@ -134,7 +165,7 @@ module Operations
       end
 
       context "in results" do
-        it "records the exception " do
+        it "fails and records the exception details" do
           task = ExceptionTest.call take_a_risk: "some_risky_result"
           expect(task).to be_failed
           expect(task.results[:failure_message]).to eq "BOOM"
