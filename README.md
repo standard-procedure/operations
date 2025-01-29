@@ -215,16 +215,56 @@ This gives you a number of possibilities:
 However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer).  Then, run a cron job (once per day) that calls `Operations::Task.delete_expired`, removing any tasks whose `deleted_at` date has passed.  
 
 ### Status messages
-
 Documentation coming soon.  
 
 ### Child tasks
-
 Coming soon.  
 
 ### Background operations and pauses
-
 Coming soon.  
+
+## Testing
+Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  
+
+Instead, you can test each state handler in isolation.  As the handlers are state-less, we can simulate calling one by creating a task object and then calling the appropriate handler with the data that it expects.  This is done by calling `handling`, which yields a `test` object with outcomes from the handler that we can inspect
+
+To test if we have moved on to another state (for actions or decisions):
+```ruby
+MyOperation.handling(:an_action_or_decision, some: "data") do |test|
+  assert_equal test.next_state, "new_state"
+  # or
+  expect(test).to have_moved_to "new_state"
+end
+```
+To test if some data has been set or modified (for actions):
+```ruby
+MyOperation.handling(:an_action, existing_data: "some_value") do |test|
+  # has a new data value been added?
+  assert_equal test.new_data, "new_value"
+  # or
+  expect(test.new_data).to eq "new_value"
+  # has an existing data value been modified?
+  assert_equal test.existing_data, "some_other_value"
+  # or
+  expect(test.existing_data).to eq "some_other_value"
+end
+```
+To test the results from a result handler:
+```ruby
+MyOperation.handling(:a_result, some: "data") do |test|
+  assert_equal test.outcome, "everything is as expected"
+  # or
+  expect(test.outcome).to eq "everything is as expected"
+end
+```
+To test if a handler has failed:
+```ruby
+MyOperation.handling(:a_failure, some: "data") do |test|
+  assert_equal test.failure_message, "oh dear"
+  # or
+  expect(test).to have_failed_with "oh dear"
+end
+```
 
 ## Installation
 Add the gem to your Rails application's Gemfile:

@@ -69,7 +69,7 @@ module Operations::Task::StateManagement
     def call(task, data)
       result = @condition.nil? ? task.send(@name, data) : data.instance_exec(&@condition)
       next_state = result ? @true_state : @false_state
-      next_state.respond_to?(:call) ? data.instance_eval(&next_state) : task.go_to(next_state, data)
+      next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state, data)
     end
   end
 
@@ -82,7 +82,7 @@ module Operations::Task::StateManagement
     def call(task, data)
       results = OpenStruct.new
       data.instance_exec(results, &@handler) unless @handler.nil?
-      task.send :complete, results
+      data.complete(results)
     end
   end
 end
