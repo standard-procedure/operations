@@ -194,14 +194,12 @@ Handlers can alternatively be implemented as methods on the task itself.  This m
 The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments).  Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results.raw_data`.
 
 ### Failures and exceptions
-
 If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results.exception_message`, `results.exception_class` and `results.exception_backtrace` for the exception's message, class name and backtrace respectively.  
 
 You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results.failure_message`.
 
 ### Task life-cycle and the database
-
-There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails app:operations:install:migrations` to copy it to your application.  
+There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails operations:install:migrations` to copy it to your application, then run `bin/rails db:migrate` to add the table to your application's database.  
 
 When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
 
@@ -226,21 +224,17 @@ Coming soon.
 Coming soon.  
 
 ## Installation
-Add this line to your application's Gemfile:
+Add the gem to your Rails application's Gemfile:
 
 ```ruby
 gem "standard_procedure_operations"
 ```
-
-Run `bundle install`, copy and run the migrations to add the tasks table to your database:
-
+Run `bundle install`, then copy and run the migrations to add the tasks table to your database:
 ```sh
-bin/rails app:operations:install:migrations 
+bin/rails operations:install:migrations 
 bin/rails db:migrate
 ```
-
-Then create your own operations by inheriting from `Operations::Task`.
-
+Create your own operations by inheriting from `Operations::Task` and revel in the stateful flowcharts!
 ```ruby
 class DailyLife < Operations::Task
   starts_with :am_i_awake?
