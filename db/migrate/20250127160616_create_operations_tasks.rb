@@ -5,7 +5,9 @@ class CreateOperationsTasks < ActiveRecord::Migration[8.0]
       t.integer :status, default: 0, null: false
       t.string :state, null: false
       t.string :status_message, default: "", null: false
+      t.text :data, default: "{}"
       t.text :results, default: "{}"
+      t.boolean :background, default: false, null: false
       t.datetime :delete_at, null: false, index: true
       t.timestamps
     end
