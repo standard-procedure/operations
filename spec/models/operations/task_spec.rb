@@ -117,7 +117,7 @@ module Operations
         it "records the exception " do
           task = ExceptionTest.call take_a_risk: "some_risky_action"
           expect(task).to be_failed
-          expect(task.results[:exception_message]).to eq "BOOM"
+          expect(task.results[:failure_message]).to eq "BOOM"
           expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
           expect(task.results[:exception_backtrace]).to be_kind_of(Array)
         end
@@ -127,7 +127,7 @@ module Operations
         it "records the exception " do
           task = ExceptionTest.call take_a_risk: "some_risky_decision"
           expect(task).to be_failed
-          expect(task.results[:exception_message]).to eq "BOOM"
+          expect(task.results[:failure_message]).to eq "BOOM"
           expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
           expect(task.results[:exception_backtrace]).to be_kind_of(Array)
         end
@@ -137,7 +137,7 @@ module Operations
         it "records the exception " do
           task = ExceptionTest.call take_a_risk: "some_risky_result"
           expect(task).to be_failed
-          expect(task.results[:exception_message]).to eq "BOOM"
+          expect(task.results[:failure_message]).to eq "BOOM"
           expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
           expect(task.results[:exception_backtrace]).to be_kind_of(Array)
         end

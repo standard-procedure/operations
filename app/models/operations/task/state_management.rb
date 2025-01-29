@@ -26,7 +26,7 @@ module Operations::Task::StateManagement
   private def process_current_state(data)
     handler_for(state).call(self, data)
   rescue => ex
-    update! status: "failed", results: OpenStruct.new(exception_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace)
+    update! status: "failed", results: OpenStruct.new(failure_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace)
   end
   private def state_is_valid
     errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?

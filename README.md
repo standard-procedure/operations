@@ -194,7 +194,7 @@ Handlers can alternatively be implemented as methods on the task itself.  This m
 The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments).  Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results.raw_data`.
 
 ### Failures and exceptions
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results.exception_message`, `results.exception_class` and `results.exception_backtrace` for the exception's message, class name and backtrace respectively.  
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results.failure_message`, `results.exception_class` and `results.exception_backtrace` for the exception's message, class name and backtrace respectively.  
 
 You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results.failure_message`.
 
