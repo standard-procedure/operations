@@ -2,13 +2,13 @@ require "rails_helper"
 
 module Operations
   RSpec.describe Task::Deletion, type: :model do
-    describe "configuration" do
-      around do |example|
-        original = Task.deletes_after
-        example.run
-        Task.delete_after original
-      end
+    around do |example|
+      original = Task.deletes_after
+      example.run
+      Task.delete_after original
+    end
 
+    describe "configuration" do
       it "defines a default delete_at value" do
         Task.delete_after 365.days
         expect(Task.deletes_after).to eq 365.days
@@ -17,19 +17,23 @@ module Operations
       it "has a default deletion time of 90 days" do
         expect(Task.deletes_after).to eq 90.days
       end
+    end
 
-      it "sets the default delete_at value" do
-        Task.delete_after 365.days
-        task = Task.new
-        expect(task.delete_at).to be_within(1.second).of(365.days.from_now)
-      end
-
-      it "must have a delete_at value" do
+    describe "deleted_at" do
+      it "is mandatory" do
         task = Task.new delete_at: nil
         expect(task).to_not be_valid
         expect(task.errors).to include(:delete_at)
       end
 
+      it "defaults to Task.deletes_after" do
+        Task.delete_after 365.days
+        task = Task.new
+        expect(task.delete_at).to be_within(1.second).of(365.days.from_now)
+      end
+    end
+
+    describe "deletion" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class DeletingTask < Task
         starts_with :initial

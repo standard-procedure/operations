@@ -2,6 +2,60 @@ require "rails_helper"
 
 module Operations
   RSpec.describe Task, type: :model do
+    describe "configuration" do
+      it "declares which parameters are required" do
+        definition = Class.new(Task) do
+          inputs :first_name, :last_name
+        end
+
+        expect(definition.required_inputs).to include :first_name
+        expect(definition.required_inputs).to include :last_name
+      end
+
+      it "declares the initial state" do
+        definition = Class.new(Task) do
+          starts_with "you_are_here"
+        end
+        expect(definition.initial_state).to eq :you_are_here
+      end
+
+      it "declares a decision handler" do
+        definition = Class.new(Task) do
+          decision :is_it_done? do
+            condition { rand(2) == 0 }
+            if_true :done
+            if_false :not_done
+          end
+        end
+
+        handler = definition.handler_for(:is_it_done?)
+        expect(handler).to_not be_nil
+      end
+
+      it "declares an action handler" do
+        definition = Class.new(Task) do
+          action :do_something do
+            # whatever
+            go_to :i_did_it
+          end
+        end
+
+        handler = definition.handler_for(:do_something)
+        expect(handler).to_not be_nil
+      end
+
+      it "declares a completed handler" do
+        definition = Class.new(Task) do
+          result :all_done do |results|
+            results[:job] = "done"
+          end
+        end
+
+        handler = definition.handler_for(:all_done)
+        expect(handler).to_not be_nil
+      end
+    end
+
     describe "state" do
       it "must be one of the defined states" do
         definition = Class.new(Task) do
@@ -66,37 +120,6 @@ module Operations
       end
     end
 
-    describe "inputs" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class InputTest < Task
-        inputs :salutation, :name
-        starts_with :generate_greeting
-        result :generate_greeting do |results|
-          results.greeting = [salutation, name, suffix].compact.join(" ")
-        end
-      end
-      # standard:enable Lint/ConstantDefinitionInBlock
-
-      it "requires parameters to be passed as input" do
-        expect(InputTest.required_inputs).to include :salutation
-        expect(InputTest.required_inputs).to include :name
-      end
-
-      it "raises an Operations::MissingInputsError if the required inputs are not provided" do
-        expect { InputTest.call }.to raise_error(Operations::MissingInputsError)
-      end
-
-      it "accepts the required inputs" do
-        task = InputTest.call salutation: "Greetings", name: "Alice"
-        expect(task.results.greeting).to eq "Greetings Alice"
-      end
-
-      it "accepts optional inputs" do
-        task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
-        expect(task.results.greeting).to eq "Greetings Alice - lovely to meet you"
-      end
-    end
-
     describe "call" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class StartTest < Task
@@ -116,6 +139,30 @@ module Operations
       it "marks the task as 'in progress'" do
         task = StartTest.call
         expect(task).to be_in_progress
+      end
+
+      # standard:disable Lint/ConstantDefinitionInBlock
+      class InputTest < Task
+        inputs :salutation, :name
+        starts_with :generate_greeting
+        result :generate_greeting do |results|
+          results.greeting = [salutation, name, suffix].compact.join(" ")
+        end
+      end
+      # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "raises an Operations::MissingInputsError if the required parameters are not provided" do
+        expect { InputTest.call(hello: "world") }.to raise_error(Operations::MissingInputsError)
+      end
+
+      it "executes the task if the required parameters are provided" do
+        task = InputTest.call salutation: "Greetings", name: "Alice"
+        expect(task.results.greeting).to eq "Greetings Alice"
+      end
+
+      it "executes the task if optional parameters are provided in addition to the required ones" do
+        task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
+        expect(task.results.greeting).to eq "Greetings Alice - lovely to meet you"
       end
     end
 
