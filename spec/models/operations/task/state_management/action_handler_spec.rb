@@ -7,7 +7,10 @@ module Operations::Task::StateManagement
       class ActionHandlerTest < Operations::Task
         starts_with "do_something"
 
-        action "do_something", inputs: [:next_state] do
+        action "do_something" do
+          inputs :next_state
+          optional :something_else
+
           self.i_was_here = true
           go_to next_state
         end

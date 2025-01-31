@@ -29,12 +29,16 @@ module Examples
         if_false :return_filename
       end
 
-      action :scramble_filename, inputs: [:document] do
+      action :scramble_filename do
+        inputs :document
         self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
         go_to :return_filename
       end
 
-      result :return_filename, inputs: [:document], optional: [:filename] do |results|
+      result :return_filename do |results|
+        inputs :document
+        optional :filename
+
         results.filename = filename || document.filename.to_s
       end
 

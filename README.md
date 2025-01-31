@@ -48,27 +48,38 @@ class PrepareDocumentForDownload < Operations::Task
   starts_with :authorised?
 
   decision :authorised? do
+    inputs :user
+
     if_true :within_download_limits?
     if_false { fail_with "unauthorised" }
   end
 
   decision :within_download_limits? do
+    inputs :user
+
     if_true :use_filename_scrambler?
     if_false { fail_with "download_limit_reached" }
   end
 
   decision :use_filename_scrambler? do
+    inputs :use_filename_scrambler
     condition { use_filename_scrambler }
+
     if_true :scramble_filename
     if_false :return_filename
   end
 
   action :scramble_filename do
+    inputs :document
+    
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
     go_to :return_filename
   end
 
   result :return_filename do |results|
+    inputs :document
+    optional :filename
+
     results.filename = filename || document.filename.to_s
   end
 
@@ -89,6 +100,7 @@ It's up to you whether you define the condition as a block, as part of the decis
 ```ruby
 decision :is_it_the_weekend? do 
   condition { Date.today.wday.in? [0, 6] }
+
   if_true :have_a_party 
   if_false :go_to_work
 end
@@ -104,6 +116,7 @@ def is_it_the_weekend?(data)
   Date.today.wday.in? [0, 6]
 end
 ```
+
 A decision can also mark a failure, which will terminate the task.  
 ```ruby
 decision :authorised? do 
@@ -112,6 +125,20 @@ decision :authorised? do
   if_false { fail_with "Unauthorised" }
 end
 ```
+
+You can specify the data that is required for a decision handler to run by specifying `inputs` and `optionals`:
+```ruby
+decision :authorised? do 
+  inputs  :user 
+  optionals :override
+
+  condition { override || user.administrator? }
+
+  if_true :do_some_work 
+  if_false { fail_with "Unauthorised" }
+end
+```
+In this case, the task will fail if there is no `user` specified.  However, `override` is optional (and in fact the `optional` method is just there to help you document your operations).
 
 ### Actions
 An action handler does some work, then moves to another state.  
@@ -124,7 +151,21 @@ action :have_a_party do
   go_to :send_invitations
 end
 ```
-Again, instead of using a block in the action handler, you could provide a method to do the work.
+You can specify the required and optional data for your action handler within the block.  `optional` is decorative and to help with your documentation.  Ensure you call `inputs` at the start of the block.  
+
+```ruby 
+action :have_a_party do
+  inputs :task 
+  optional :music 
+
+  self.food = task.buy_some_food_for(number_of_guests)
+  self.beer = task.buy_some_beer_for(number_of_guests)
+  self.music ||= task.plan_a_party_playlist
+  go_to :send_invitations
+end
+```
+
+Again, instead of using a block in the action handler, you could provide a method to do the work.  However, you cannot specify `inputs` or `optional` data when using a method.  
 
 ```ruby
 action :have_a_party
@@ -142,6 +183,8 @@ Do not forget to call `go_to` from your action handler, otherwise the operation 
 
 ### Results
 A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored in the database (as many operations may have a large set of working data).  
+
+There is no method equivalent to a block handler.  
 
 ```ruby
 action :send_invitations do 
@@ -164,6 +207,24 @@ If you don't have any meaningful results, you can omit the block on your result 
 result :go_to_work
 ```
 In this case, the task will be marked as `completed?`, the task's state will be `go_to_work` and `results` will be empty.  
+
+You can also specify the required and optional data for your result handler within the block.  `optional` is decorative and to help with your documentation.  Ensure you call `inputs` at the start of the block.  
+```ruby
+action :send_invitations do 
+  inputs :number_of_guests
+  self.invited_friends = (0..number_of_guests).collect do |i|
+    friend = friends.pop
+    FriendsMailer.with(recipient: friend).party_invitation.deliver_later
+    friend 
+  end
+  go_to :ready_to_party
+end
+
+result :ready_to_party do |results|
+  inputs :invited_friends 
+
+  results.invited_friends = invited_friends
+end
 
 ### Calling an operation
 You would use the earlier [PrepareDocumentForDownload](spec/examples/prepare_document_for_download_spec.rb) operation in a controller like this:

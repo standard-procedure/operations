@@ -14,7 +14,10 @@ module Operations::Task::StateManagement
     class CompletionHandlerInputTest < Operations::Task
       starts_with "done"
 
-      result "done", inputs: [:greetings] do |results|
+      result "done" do |results|
+        inputs :greetings
+        optional :name
+
         results[:hello] = greetings
       end
     end
@@ -23,6 +26,7 @@ module Operations::Task::StateManagement
 
     it "records the result" do
       task = CompletionHandlerTest.call
+
       expect(task.results[:hello]).to eq "world"
       expect(task).to be_completed
     end
