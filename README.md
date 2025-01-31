@@ -297,3 +297,12 @@ Step 4: If you're using RSpec for testing, add `require "operations/matchers" to
 
 ## License
 The gem is available as open source under the terms of the [LGPL License](/LICENSE).  This may or may not make it suitable for your needs.
+
+## Roadmap
+
+- [ ] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
+- [ ] Simplify calling sub-tasks (and testing the same)
+- [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)
+- [ ] Make Operations::Task work in the background using ActiveJob
+- [ ] Add pause/resume capabilities (for example, when a task needs to wait for user input)
+- [ ] Add wait for sub-tasks capabilities
