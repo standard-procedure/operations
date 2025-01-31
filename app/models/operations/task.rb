@@ -4,7 +4,6 @@ module Operations
     include Deletion
     include Testing
     enum :status, in_progress: 0, completed: 1, failed: -1
-    composed_of :results, class_name: "OpenStruct", constructor: ->(results) { results.to_h }, converter: ->(hash) { OpenStruct.new(hash) }
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
 
     def self.call(data = {})

@@ -100,7 +100,16 @@ module Operations
         task = CompletedStateTest.call
         expect(task).to be_completed
         expect(task.state).to eq "done"
-        expect(task.results.hello).to eq "world"
+        expect(task.results[:hello]).to eq "world"
+      end
+
+      it "stores the results in the database after completion" do
+        task = CompletedStateTest.call
+        expect(task).to be_completed
+        id = task.id
+        copy = Task.find(id)
+
+        expect(copy.results[:hello]).to eq "world"
       end
 
       # standard:disable Lint/ConstantDefinitionInBlock
@@ -116,7 +125,16 @@ module Operations
         task = FailureTest.call
         expect(task).to be_failed
         expect(task.state).to eq "go"
-        expect(task.results.failure_message).to eq "BOOM"
+        expect(task.results[:failure_message]).to eq "BOOM"
+      end
+
+      it "stores the results in the database after failure" do
+        task = FailureTest.call
+        expect(task).to be_failed
+        id = task.id
+        copy = Task.find(id)
+
+        expect(copy.results[:failure_message]).to eq "BOOM"
       end
     end
 
@@ -157,12 +175,12 @@ module Operations
 
       it "executes the task if the required parameters are provided" do
         task = InputTest.call salutation: "Greetings", name: "Alice"
-        expect(task.results.greeting).to eq "Greetings Alice"
+        expect(task.results[:greeting]).to eq "Greetings Alice"
       end
 
       it "executes the task if optional parameters are provided in addition to the required ones" do
         task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
-        expect(task.results.greeting).to eq "Greetings Alice - lovely to meet you"
+        expect(task.results[:greeting]).to eq "Greetings Alice - lovely to meet you"
       end
     end
 

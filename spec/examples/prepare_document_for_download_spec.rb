@@ -44,7 +44,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_completed
-      expect(task.results.filename).to eq "document.pdf"
+      expect(task.results[:filename]).to eq "document.pdf"
     end
 
     it "scrambles the original filename" do
@@ -54,8 +54,8 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: true
 
       expect(task).to be_completed
-      expect(task.results.filename).to include ".pdf"
-      expect(task.results.filename).to_not include "document"
+      expect(task.results[:filename]).to include ".pdf"
+      expect(task.results[:filename]).to_not include "document"
     end
 
     it "fails if not authorised" do
@@ -65,7 +65,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_failed
-      expect(task.results.failure_message).to eq "unauthorised"
+      expect(task.results[:failure_message]).to eq "unauthorised"
     end
 
     it "fails if download limits have been reached" do
@@ -75,7 +75,7 @@ module Examples
       task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
 
       expect(task).to be_failed
-      expect(task.results.failure_message).to eq "download_limit_reached"
+      expect(task.results[:failure_message]).to eq "download_limit_reached"
     end
   end
 end

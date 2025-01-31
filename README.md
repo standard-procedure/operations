@@ -157,7 +157,7 @@ result :ready_to_party do |results|
   results.invited_friends = invited_friends
 end
 ```
-After this result handler has executed, the task will then be marked as `completed?`, the task's state will be `ready_to_party` and `results.invited_friends` will contain an array of the people you sent invitations to.  
+After this result handler has executed, the task will then be marked as `completed?`, the task's state will be `ready_to_party` and `results[:invited_friends]` will contain an array of the people you sent invitations to.  
 
 If you don't have any meaningful results, you can omit the block on your result handler.  
 ```ruby
@@ -190,16 +190,22 @@ Each operation carries its own, mutable, data for the duration of the operation.
 
 For example, in the [DownloadsController](#calling-an-operation) shown above, the `user`, `document` and `use_filename_scrambler` are set within the data object when the operation is started.  But if the `scramble_filename` action is called, it generates a new filename and adds that to the data object as well.  Finally the `return_filename` result handler then returns either the scrambled or the original filename to the caller. 
 
-Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.my_data = "something important"`.  This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  This also means that block handlers must use `task.method` to access methods or data on the task object itself (as you are not actually within the context of the task object itself).  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task.  
+Within handlers implemented as blocks, you can read the data directly - for example, `condition { use_filename_scrambler }` from the `use_filename_scrambler?` decision shown earlier.  If you want to modify a value, or add a new one, you must use `self` - `self.my_data = "something important"`.  
+
+This is because the data is carried using a [DataCarrier](/app/models/operations/task/data_carrier.rb) object and `instance_eval` is used within your block handlers.  
+
+This also means that block handlers must use `task.method` to access methods or data on the task object itself (as you are not actually within the context of the task object itself).  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task.  
 
 Handlers can alternatively be implemented as methods on the task itself.  This means that they are executed within the context of the task and can methods and variables belonging to the task.  Each handler method receives a `data` parameter which is the data carrier for that task.  Individual items can be accessed as a hash - `data[:my_item]` - or as an attribute - `data.my_item`.  
 
-The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is accessed as an OpenStruct that is encoded into JSON.  But any ActiveRecord models are translated using a [GlobalID](https://github.com/rails/globalid) using [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments).  Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable, as the `GlobalID::Locator` will fail when it tries to load the record.  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results.raw_data`.
+The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is a Hash that is encoded into JSON with any ActiveRecord models translated using a [GlobalID](https://github.com/rails/globalid) (this uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) so works the same way as passing models to ActiveJob).  
+
+Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable (as `GlobalID::Locator` will fail when it tries to load the record).  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results.raw_data`.
 
 ### Failures and exceptions
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results.failure_message`, `results.exception_class` and `results.exception_backtrace` for the exception's message, class name and backtrace respectively.  
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
 
-You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results.failure_message`.
+You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results[:failure_message]`.
 
 ### Task life-cycle and the database
 There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails operations:install:migrations` to copy it to your application, then run `bin/rails db:migrate` to add the table to your application's database.  
@@ -254,9 +260,15 @@ To test the results from a result handler:
 MyOperation.handling(:a_result, some: "data") do |test|
   assert_equal test.outcome, "everything is as expected"
   # or
+  assert_equal test[:outcome], "everything is as expected"
+  # or
   expect(test.outcome).to eq "everything is as expected"
+  # or
+  expect(test[:outcome]).to eq "everything is as expected"
 end
 ```
+(Note - although results are stored in the database as a Hash, within your test, the results object is still carried as an OpenStruct, so you can access it using either notation).
+
 To test if a handler has failed:
 ```ruby
 MyOperation.handling(:a_failure, some: "data") do |test|

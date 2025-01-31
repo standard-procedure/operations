@@ -13,7 +13,7 @@ module Operations::Task::StateManagement
 
     it "records the result" do
       task = CompletionHandlerTest.call
-      expect(task.results.hello).to eq "world"
+      expect(task.results[:hello]).to eq "world"
       expect(task).to be_completed
     end
   end
