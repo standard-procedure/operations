@@ -7,27 +7,19 @@ module Operations::Task::StateManagement
   end
 
   class_methods do
-    def inputs(*names) = @required_inputs = names.map(&:to_sym)
-
-    def required_inputs = @required_inputs ||= []
-
     def starts_with(value) = @initial_state = value.to_sym
 
     def initial_state = @initial_state
 
     def decision(name, &config) = state_handlers[name.to_sym] = DecisionHandler.new(name, &config)
 
-    def action(name, &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, &handler)
+    def action(name, inputs: [], optional: [], &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, inputs, optional, &handler)
 
-    def result(name, &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, &results)
+    def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, inputs, optional, &results)
 
     def state_handlers = @state_handlers ||= {}
 
     def handler_for(state) = state_handlers[state.to_sym]
-
-    def required_inputs_are_present_in?(data) = missing_inputs_from(data).empty?
-
-    def missing_inputs_from(data) = (required_inputs - data.keys.map(&:to_sym))
   end
 
   private def handler_for(state) = self.class.handler_for(state.to_sym)
@@ -41,17 +33,24 @@ module Operations::Task::StateManagement
   end
 
   class ActionHandler
-    def initialize name, &action
+    include Operations::Task::InputValidation
+
+    def initialize name, inputs = [], optional = [], &action
       @name = name.to_sym
+      @required_inputs = inputs
+      @optional_inputs = optional
       @action = action
     end
 
     def call(task, data)
+      validate_inputs! data.to_h
       @action.nil? ? task.send(@name, data) : data.instance_exec(&@action)
     end
   end
 
   class DecisionHandler
+    include Operations::Task::InputValidation
+
     def initialize name, &config
       @name = name.to_sym
       @condition = nil
@@ -67,6 +66,7 @@ module Operations::Task::StateManagement
     def if_false(state = nil, &handler) = @false_state = state || handler
 
     def call(task, data)
+      validate_inputs! data.to_h
       result = @condition.nil? ? task.send(@name, data) : data.instance_exec(&@condition)
       next_state = result ? @true_state : @false_state
       next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state, data)
@@ -74,12 +74,17 @@ module Operations::Task::StateManagement
   end
 
   class CompletionHandler
-    def initialize name, &handler
+    include Operations::Task::InputValidation
+
+    def initialize name, inputs = [], optional = [], &handler
       @name = name.to_sym
+      @required_inputs = inputs
+      @optional_inputs = optional
       @handler = handler
     end
 
     def call(task, data)
+      validate_inputs! data.to_h
       results = OpenStruct.new
       data.instance_exec(results, &@handler) unless @handler.nil?
       data.complete(results)

@@ -12,6 +12,14 @@ module Operations
         expect(definition.required_inputs).to include :last_name
       end
 
+      it "declares which parameters are optional" do
+        definition = Class.new(Task) do
+          optional :middle_name
+        end
+
+        expect(definition.optional_inputs).to include :middle_name
+      end
+
       it "declares the initial state" do
         definition = Class.new(Task) do
           starts_with "you_are_here"
@@ -169,8 +177,8 @@ module Operations
       end
       # standard:enable Lint/ConstantDefinitionInBlock
 
-      it "raises an Operations::MissingInputsError if the required parameters are not provided" do
-        expect { InputTest.call(hello: "world") }.to raise_error(Operations::MissingInputsError)
+      it "raises an ArgumentError if the required parameters are not provided" do
+        expect { InputTest.call(hello: "world") }.to raise_error(ArgumentError)
       end
 
       it "executes the task if the required parameters are provided" do

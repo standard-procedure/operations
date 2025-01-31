@@ -8,27 +8,33 @@ module Examples
       starts_with :authorised?
 
       decision :authorised? do
+        inputs :user
+
         if_true :within_download_limits?
         if_false { fail_with "unauthorised" }
       end
 
       decision :within_download_limits? do
+        inputs :user
+
         if_true :use_filename_scrambler?
         if_false { fail_with "download_limit_reached" }
       end
 
       decision :use_filename_scrambler? do
+        inputs :use_filename_scrambler
         condition { use_filename_scrambler }
+
         if_true :scramble_filename
         if_false :return_filename
       end
 
-      action :scramble_filename do
+      action :scramble_filename, inputs: [:document] do
         self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
         go_to :return_filename
       end
 
-      result :return_filename do |results|
+      result :return_filename, inputs: [:document], optional: [:filename] do |results|
         results.filename = filename || document.filename.to_s
       end
 

@@ -7,7 +7,7 @@ module Operations::Task::StateManagement
       class ActionHandlerTest < Operations::Task
         starts_with "do_something"
 
-        action "do_something" do
+        action "do_something", inputs: [:next_state] do
           self.i_was_here = true
           go_to next_state
         end
@@ -21,6 +21,10 @@ module Operations::Task::StateManagement
         end
       end
       # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "fails if the required inputs are not supplied" do
+        expect(ActionHandlerTest.call).to be_failed
+      end
 
       it "runs the action" do
         task = ActionHandlerTest.call next_state: "this"

@@ -3,11 +3,13 @@ module Operations
     include StateManagement
     include Deletion
     include Testing
+    extend InputValidation
+
     enum :status, in_progress: 0, completed: 1, failed: -1
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
 
     def self.call(data = {})
-      raise MissingInputsError, "Missing inputs: #{missing_inputs_from(data).join(", ")}" unless required_inputs_are_present_in?(data)
+      validate_inputs! data
       create!(state: initial_state, status_message: "").tap do |task|
         task.send(:process_current_state, DataCarrier.new(data.merge(task: task)))
       end

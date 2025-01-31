@@ -312,6 +312,7 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 
 ## Roadmap
 
+- [ ] Specify inputs (required and optional) per-state, not just at the start
 - [ ] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
 - [ ] Simplify calling sub-tasks (and testing the same)
 - [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)

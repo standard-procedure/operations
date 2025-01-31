@@ -8,7 +8,9 @@ module Operations::Task::StateManagement
         starts_with "choose"
 
         decision "choose" do
+          inputs :value
           condition { value == true }
+
           if_true "truth"
           if_false "lies"
         end
@@ -22,6 +24,10 @@ module Operations::Task::StateManagement
         end
       end
       # standard:enable Lint/ConstantDefinitionInBlock
+
+      it "fails if the required input is not provided" do
+        expect(DecisionHandlerTest.call).to be_failed
+      end
 
       it "runs the true handler" do
         task = DecisionHandlerTest.call value: true
