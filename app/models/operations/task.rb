@@ -21,6 +21,6 @@ module Operations
 
     def fail_with(message) = update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
 
-    def complete(results) = update!(status: "completed", status_message: "completed", results: results)
+    def complete(results) = update!(status: "completed", status_message: "completed", results: results.to_h)
   end
 end
