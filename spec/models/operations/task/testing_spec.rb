@@ -8,17 +8,26 @@ module Operations
       starts_with :question
 
       decision :question do
+        inputs :answer
+        optional :something_else
+
         condition { answer == 42 }
         if_true :make_a_fjord
         if_false { fail_with "the earth has been demolished" }
       end
 
       action :make_a_fjord do
+        inputs :answer
+        optional :something_else
+
         self.coastline = "long and winding"
         go_to :done
       end
 
       result :done do |results|
+        inputs :coastline
+        optional :something_else
+
         results.reverse = coastline.reverse
       end
     end

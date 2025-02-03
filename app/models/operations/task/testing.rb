@@ -10,7 +10,7 @@ module Operations::Task::Testing
     end
   end
 
-  class TestResultCarrier < OpenStruct
+  class TestResultCarrier < Operations::Task::DataCarrier
     def go_to(state, message = nil)
       self.next_state = state
       self.status_message = message || next_state.to_s
