@@ -8,7 +8,8 @@ module Examples
       starts_with :authorised?
 
       decision :authorised? do
-        inputs :user
+        inputs :user, :document
+        condition { user.can? :read, document }
 
         if_true :within_download_limits?
         if_false { fail_with "unauthorised" }
@@ -16,6 +17,7 @@ module Examples
 
       decision :within_download_limits? do
         inputs :user
+        condition { user.within_download_limits? }
 
         if_true :use_filename_scrambler?
         if_false { fail_with "download_limit_reached" }
@@ -41,9 +43,6 @@ module Examples
 
         results.filename = filename || document.filename.to_s
       end
-
-      private def authorised?(data) = data.user.can?(:read, data.document)
-      private def within_download_limits?(data) = data.user.within_download_limits?
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
