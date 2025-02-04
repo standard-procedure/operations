@@ -210,22 +210,6 @@ You would use the earlier [PrepareDocumentForDownload](spec/examples/prepare_doc
 ```ruby
 class DownloadsController < ApplicationController 
   def show 
-    @document = Document.includes(:account).find(params[:id])
-    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: @document.account.use_filename_scrambler?)
-    if @task.completed?
-      @filename = @task.results[:filename]
-      send_data @document.contents, filename: @filename, disposition: "attachment"
-    else
-      render action: "error", message: @task.results[:failure_message], status: 401
-    end
-  end
-end
-```
-
-Future dev: I'm going to change this so it raises an exception on failure so it will become:
-```ruby
-class DownloadsController < ApplicationController 
-  def show 
     @document = Document.find(params[:id])
     @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: Current.account.use_filename_scrambler?)
 
@@ -274,9 +258,7 @@ Be aware that if you do store an ActiveRecord model into your `results` and that
 ### Failures and exceptions
 If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
 
-You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `results` has will contain `results[:failure_message]`.
-
-(Future dev - going to change this so it raises an exception (or passes it on to the caller) so you don't need to test for `failed?` every time - this will simplify managing sub-tasks).
+You can also stop a task at any point by calling `fail_with message`.  This will raise an `Operations::Failure` exception, marking the task as `failed?` and the `results` has will contain `results[:failure_message]`.
 
 ### Task life-cycle and the database
 There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails operations:install:migrations` to copy it to your application, then run `bin/rails db:migrate` to add the table to your application's database.  
@@ -407,13 +389,9 @@ end
 ### Testing failures 
 To test if a handler has failed:
 ```ruby
-MyOperation.handling(:a_failure, some: "data") do |test|
-  assert_equal test.failure_message, "oh dear"
-  # or
-  expect(test).to have_failed_with "oh dear"
-end
+
+expect { MyOperation.handling(:a_failure, some: "data") }.to raise_error(SomeException)
 ```
-(Future dev: exceptions will not be silently caught so this will probably become `expect { MyOperation.handling(:a_failure, some: "data") }.to raise_exception(Whatever)).
 
 If you are using RSpec, you must `require "operations/matchers"` to make the matchers available to your specs.  
 
