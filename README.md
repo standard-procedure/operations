@@ -315,7 +315,15 @@ end
 ```
 
 ### Background operations and pauses
-Coming soon.  
+If you have ActiveJob configured, you can run your operations in the background.  
+
+Instead of using `call`, use `start` to initiate the operation.  This takes the same data parameters and returns a task object that you can refer back to.  But it will be `waiting?` instead of `in_progress?` or `completed?`.  An `Operations::TaskRunnerJob` will be queued and it will mark the task as `in_progress?`, then call a _single_ state handler.  Instead of handling the next state immediately another `Operations::TaskRunnerJob` is queued.  And so on, until the task either fails or is completed.  
+
+By itself, this is not particularly useful - it just makes your operation take even longer to complete.  
+
+But, if your operation takes a while to complete, you can retain a reference to the task and display its status in the user-interface (using `status_message` and TurboStream broadcasts).  And if you have multiple sub-tasks, you can `start` them all, do some other work, then wait for those sub-tasks to complete.  As long as you have ActiveJob workers, you get to parallelise your workflow, splitting it across multiple CPUs or even multiple servers.  
+
+Or, you can tell your operation for something to change, elsewhere in the system.  I'll put some examples of this in here once I've used them in anger.  
 
 ## Testing
 Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  

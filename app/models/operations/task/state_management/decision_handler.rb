@@ -19,6 +19,6 @@ class Operations::Task::StateManagement::DecisionHandler
     validate_inputs! data.to_h
     result = @condition.nil? ? task.send(@name, data) : data.instance_exec(&@condition)
     next_state = result ? @true_state : @false_state
-    next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state, data)
+    next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state)
   end
 end

@@ -1,5 +1,5 @@
 class Operations::Task::DataCarrier < OpenStruct
-  def go_to(state, message = nil) = task.go_to(state, self, message)
+  def go_to(state, message: nil) = task.go_to(state, self, message: message)
 
   def fail_with(message) = task.fail_with(message)
 

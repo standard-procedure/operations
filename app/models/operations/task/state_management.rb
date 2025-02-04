@@ -23,12 +23,6 @@ module Operations::Task::StateManagement
   end
 
   private def handler_for(state) = self.class.handler_for(state.to_sym)
-  private def process_current_state(data)
-    handler_for(state).call(self, data)
-  rescue => ex
-    update! status: "failed", status_message: ex.message.to_s.truncate(240), results: {failure_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace}
-    raise ex
-  end
   private def state_is_valid
     errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
   end

@@ -141,18 +141,26 @@ module Operations
       end
     end
 
-    describe "call" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class StartTest < Task
-        starts_with "initial"
+    # standard:disable Lint/ConstantDefinitionInBlock
+    class StartTest < Task
+      starts_with "initial"
 
-        action "initial" do
-          # nothing
-        end
+      action "initial" do
+        # nothing
       end
-      # standard:enable Lint/ConstantDefinitionInBlock
+    end
 
-      it "starts the task in the initial state" do
+    class InputTest < Task
+      inputs :salutation, :name
+      starts_with :generate_greeting
+      result :generate_greeting do |results|
+        results.greeting = [salutation, name, suffix].compact.join(" ")
+      end
+    end
+    # standard:enable Lint/ConstantDefinitionInBlock
+
+    describe "call" do
+      it "creates the task in the initial state" do
         task = StartTest.call
         expect(task.state).to eq "initial"
       end
@@ -162,28 +170,52 @@ module Operations
         expect(task).to be_in_progress
       end
 
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class InputTest < Task
-        inputs :salutation, :name
-        starts_with :generate_greeting
-        result :generate_greeting do |results|
-          results.greeting = [salutation, name, suffix].compact.join(" ")
-        end
+      it "marks the task as a foreground task" do
+        task = StartTest.call
+        expect(task.background?).to be false
       end
-      # standard:enable Lint/ConstantDefinitionInBlock
 
       it "raises an ArgumentError if the required parameters are not provided" do
         expect { InputTest.call(hello: "world") }.to raise_error(ArgumentError)
       end
 
-      it "executes the task if the required parameters are provided" do
+      it "performs the task if the required parameters are provided" do
         task = InputTest.call salutation: "Greetings", name: "Alice"
         expect(task.results[:greeting]).to eq "Greetings Alice"
       end
 
-      it "executes the task if optional parameters are provided in addition to the required ones" do
+      it "performs the task if optional parameters are provided in addition to the required ones" do
         task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
         expect(task.results[:greeting]).to eq "Greetings Alice - lovely to meet you"
+      end
+    end
+
+    describe "start" do
+      it "starts the task in the initial state" do
+        task = StartTest.start
+        expect(task.state).to eq "initial"
+      end
+
+      it "marks the task as 'waiting'" do
+        task = StartTest.start
+        expect(task).to be_waiting
+      end
+
+      it "marks the task as a background task" do
+        task = StartTest.start
+        expect(task.background?).to be true
+      end
+
+      it "raises an ArgumentError if the required parameters are not provided" do
+        expect { InputTest.start(hello: "world") }.to raise_error(ArgumentError)
+      end
+
+      it "performs the task later if the required parameters are provided" do
+        expect { InputTest.start salutation: "Greetings", name: "Alice" }.to have_enqueued_job(Operations::TaskRunnerJob)
+      end
+
+      it "performs the task later if optional parameters are provided in addition to the required ones" do
+        expect { InputTest.start salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you" }.to have_enqueued_job(Operations::TaskRunnerJob)
       end
     end
 
