@@ -35,13 +35,11 @@ module Operations
     end
 
     def go_to(state, data = {}, message: nil)
-      puts "GOTO #{state}"
       update!(state: state, status_message: (message || state).to_s.truncate(240))
       background? ? perform_later(data) : perform(data)
     end
 
     def fail_with(message)
-      puts "FAIL #{message}"
       update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
       raise Operations::Failure.new(message, self)
     end
