@@ -295,7 +295,42 @@ However, it also means that your database table could fill up with junk that you
 Documentation coming soon.  
 
 ### Sub tasks
-Coming soon.  
+Any operation can be composed out of other operations and can therefore call other subtasks.  
+
+```ruby
+class PrepareDownload < Operations::Task 
+  inputs :user, :document 
+  starts_with :get_authorisation
+  
+  action :get_authorisation do 
+    inputs :user, :document 
+
+    results = call GetAuthorisation, user: user, document: document 
+    self.authorised = results[:authorised]
+
+    go_to :whatever_happens_next
+  end
+end
+```
+If the sub-task succeeds, `call` returns the results from the sub-task.  If it fails, then any exceptions are re-raised.  
+
+You can also access the results in a block: 
+```ruby
+class PrepareDownload < Operations::Task 
+  inputs :user, :document 
+  starts_with :get_authorisation
+  
+  action :get_authorisation do 
+    inputs :user, :document 
+
+    call GetAuthorisation, user: user, document: document do |results|
+      self.authorised = results[:authorised]
+    end
+
+    go_to :whatever_happens_next
+  end
+end
+```
 
 ### Background operations and pauses
 Coming soon.  
@@ -309,6 +344,7 @@ As the handlers are stateless, we can call one without hitting the database; ins
 
 This is done by calling `handling`, which yields a `test` object that we can inspect.
 
+### Testing state transitions
 To test if we have moved on to another state (for actions or decisions):
 ```ruby
 MyOperation.handling(:an_action_or_decision, some: "data") do |test|
@@ -317,19 +353,23 @@ MyOperation.handling(:an_action_or_decision, some: "data") do |test|
   expect(test).to have_moved_to "new_state"
 end
 ```
+
+### Testing data modifications
 To test if some data has been set or modified (for actions):
 ```ruby
 MyOperation.handling(:an_action, existing_data: "some_value") do |test|
-  # has a new data value been added?
-  assert_equal test.new_data, "new_value"
-  # or
-  expect(test.new_data).to eq "new_value"
   # has an existing data value been modified?
   assert_equal test.existing_data, "some_other_value"
   # or
   expect(test.existing_data).to eq "some_other_value"
+  # has a new data value been added?
+  assert_equal test.new_data, "new_value"
+  # or
+  expect(test.new_data).to eq "new_value"
 end
 ```
+
+### Testing results
 To test the results from a result handler:
 ```ruby
 MyOperation.handling(:a_result, some: "data") do |test|
@@ -344,6 +384,27 @@ end
 ```
 (Note - although results are stored in the database as a Hash, within your test, the results object is still carried as an OpenStruct, so you can access it using either notation).
 
+### Testing sub-tasks 
+```ruby 
+MyOperation.handling(:a_sub_task, some: "data") do |test|
+  # Test which sub-tasks were called
+  assert_includes test.sub_tasks.keys, MySubTask
+  # or 
+  expect(test.sub_tasks).to include MySubTask
+end
+```
+TODO: I'm still figuring out how to test the data passed to sub-tasks.  And calling a sub-task will actually execute that sub-task, so you need to stub `MySubTask.call` if it's an expensive operation.  
+
+```ruby 
+# Sorry, don't know the Minitest syntax for this
+@sub_task = double "Operations::Task", results: { some: "answers" }
+allow(MySubTask).to receive(:call).and_return(@sub_task)
+
+MyOperation.handling(:a_sub_task, some: "data") do |test|
+  expect(test.sub_tasks).to include MySubTask
+end
+```
+### Testing failures 
 To test if a handler has failed:
 ```ruby
 MyOperation.handling(:a_failure, some: "data") do |test|
@@ -392,7 +453,9 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Specify inputs (required and optional) per-state, not just at the start
 - [x] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
 - [ ] Deal with actions that have forgotten to call `go_to` (probably related to future `pause` functionality)
-- [ ] Simplify calling sub-tasks (and testing them)
+- [x] Simplify calling sub-tasks (and testing them)
+- [ ] Figure out how to stub calling sub-tasks with known results data 
+- [ ] Figure out how to test the parameters passed to sub-tasks when they are called
 - [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)
 - [ ] Make Operations::Task work in the background using ActiveJob
 - [ ] Add pause/resume capabilities (for example, when a task needs to wait for user input)

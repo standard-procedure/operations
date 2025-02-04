@@ -31,6 +31,45 @@ module Operations
         results.reverse = coastline.reverse
       end
     end
+
+    class ParentTaskToBeTested < Operations::Task
+      inputs :first_question, :second_question
+      starts_with :ask_first_question
+
+      action :ask_first_question do
+        inputs :first_question
+
+        results = call AnswerQuestion, question: first_question
+        self.first_answer = results[:answer]
+        go_to :ask_second_question
+      end
+
+      action :ask_second_question do
+        inputs :second_question
+
+        results = call AnswerQuestion, question: second_question
+        self.second_answer = results[:answer]
+        go_to :done
+      end
+
+      result :done do |results|
+        inputs :first_answer, :second_answer
+
+        results.first_answer = first_answer
+        results.second_answer = second_answer
+      end
+    end
+
+    class AnswerQuestion < Operations::Task
+      inputs :question
+      starts_with :get_answer
+
+      result :get_answer do |results|
+        inputs :question
+
+        results.answer = 42
+      end
+    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     it "tests for state changes" do
@@ -72,6 +111,12 @@ module Operations
     it "tests results" do
       TaskToBeTested.handling(:done, answer: 42, coastline: "long and winding") do |test|
         expect(test.reverse).to eq "gnidniw dna gnol"
+      end
+    end
+
+    it "tests that the parent task calls the sub task" do
+      ParentTaskToBeTested.handling(:ask_first_question, first_question: "What is the answer to life, the universe, and everything?") do |test|
+        expect(test.sub_tasks).to include AnswerQuestion
       end
     end
   end

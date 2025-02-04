@@ -3,6 +3,8 @@ class Operations::Task::DataCarrier < OpenStruct
 
   def fail_with(message) = task.fail_with(message)
 
+  def call(sub_task_class, **data, &result_handler) = task.call(sub_task_class, **data, &result_handler)
+
   def complete(results) = task.complete(results)
 
   def inputs(*names)

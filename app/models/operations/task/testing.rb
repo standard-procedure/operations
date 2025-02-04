@@ -20,6 +20,12 @@ module Operations::Task::Testing
       self.failure_message = message
     end
 
+    def call(sub_task_class, **data, &result_handler)
+      self.sub_tasks ||= []
+      self.sub_tasks << sub_task_class
+      super
+    end
+
     def complete(results)
       self.completion_results = results
     end

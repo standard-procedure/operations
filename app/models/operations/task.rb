@@ -1,6 +1,7 @@
 module Operations
   class Task < ApplicationRecord
     include StateManagement
+    include SubTasks
     include Deletion
     include Testing
     extend InputValidation
