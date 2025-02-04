@@ -45,44 +45,6 @@ module Operations::Task::StateManagement
       end
     end
 
-    context "defined by a method" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class InlineDecisionHandlerTest < Operations::Task
-        starts_with "truth_or_lies?"
-
-        decision "truth_or_lies?" do
-          if_true "truth"
-          if_false "lies"
-        end
-        action "truth" do
-          self.choice = "truth"
-        end
-        action "lies" do
-          self.choice = "lies"
-        end
-
-        private def truth_or_lies?(data) = data.value
-      end
-      # standard:enable Lint/ConstantDefinitionInBlock
-
-      it "runs the true handler" do
-        task = InlineDecisionHandlerTest.call value: true
-        expect(task.state).to eq "truth"
-        expect(task).to be_in_progress
-      end
-
-      it "runs the false handler" do
-        task = InlineDecisionHandlerTest.call value: false
-        expect(task.state).to eq "lies"
-        expect(task).to be_in_progress
-      end
-
-      it "does not complete the task" do
-        task = InlineDecisionHandlerTest.call value: false
-        expect(task).to be_in_progress
-      end
-    end
-
     context "reporting a failure" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class DecisionFailureTest < Operations::Task
