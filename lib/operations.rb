@@ -12,4 +12,5 @@ module Operations
   require "operations/engine"
   require "operations/global_id_serialiser"
   require "operations/failure"
+  require "operations/cannot_wait_in_foreground"
 end

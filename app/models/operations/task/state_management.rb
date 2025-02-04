@@ -15,6 +15,8 @@ module Operations::Task::StateManagement
 
     def action(name, inputs: [], optional: [], &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, inputs, optional, &handler)
 
+    def wait_until(name, &config) = state_handlers[name.to_sym] = WaitHandler.new(name, &config)
+
     def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, inputs, optional, &results)
 
     def state_handlers = @state_handlers ||= {}

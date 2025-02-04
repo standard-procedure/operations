@@ -157,6 +157,23 @@ module Operations
         results.greeting = [salutation, name, suffix].compact.join(" ")
       end
     end
+
+    class WaitingTest < Task
+      starts_with :value_has_been_set
+
+      wait_until :value_has_been_set do
+        condition { WaitingTest.stop == true }
+        go_to :done
+      end
+
+      result :done
+
+      def self.stop=(value)
+        @stop = value
+      end
+
+      def self.stop = @stop ||= false
+    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     describe "call" do
@@ -187,6 +204,10 @@ module Operations
       it "performs the task if optional parameters are provided in addition to the required ones" do
         task = InputTest.call salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you"
         expect(task.results[:greeting]).to eq "Greetings Alice - lovely to meet you"
+      end
+
+      it "raises an Operations::CannotWaitInForeground error if the task is not a background task" do
+        expect { WaitingTest.call }.to raise_error(Operations::CannotWaitInForeground)
       end
     end
 
