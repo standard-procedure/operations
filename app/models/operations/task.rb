@@ -7,9 +7,10 @@ module Operations
     extend InputValidation
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
+    serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
 
-    def perform(data)
+    def perform
       in_progress!
       handler_for(state).call(self, carrier_for(data))
     rescue => ex
@@ -17,26 +18,26 @@ module Operations
       raise ex
     end
 
-    def perform_later(data)
+    def perform_later
       waiting!
-      TaskRunnerJob.perform_later(self, data: data.to_h)
+      TaskRunnerJob.perform_later self
     end
 
     def self.call(**data)
       build(background: false, **data).tap do |task|
-        task.perform DataCarrier.new(data.merge(task: task))
+        task.perform
       end
     end
 
     def self.start(**data)
       build(background: true, **data).tap do |task|
-        task.perform_later data
+        task.perform_later
       end
     end
 
     def go_to(state, data = {}, message: nil)
-      update!(state: state, status_message: (message || state).to_s.truncate(240))
-      background? ? perform_later(data) : perform(data)
+      update!(state: state, data: data.to_h, status_message: (message || state).to_s.truncate(240))
+      background? ? perform_later : perform
     end
 
     def fail_with(message)
@@ -50,7 +51,7 @@ module Operations
 
     def self.build(background:, **data)
       validate_inputs! data
-      create!(state: initial_state, status: background ? "waiting" : "in_progress", status_message: "", background: background)
+      create!(state: initial_state, status: background ? "waiting" : "in_progress", data: data, status_message: "", background: background)
     end
   end
 end

@@ -35,18 +35,19 @@ module Operations
     # standard:enable Lint/ConstantDefinitionInBlock
 
     it "performs waiting tasks" do
-      task = InputTest.build(background: true, salutation: "Hello", name: "World")
+      task = InputTest.build(background: true, salutation: "Hello", name: "Alice")
 
-      TaskRunnerJob.perform_now task, data: {salutation: "Hello", name: "Alice"}
+      TaskRunnerJob.perform_now task
 
       expect(task.reload.results[:greeting]).to eq "Hello Alice"
       expect(task).to be_completed
     end
 
     it "does not perform in_progress tasks" do
-      task = InputTest.build(background: true, salutation: "Hello", name: "World")
+      task = InputTest.build(background: true, salutation: "Hello", name: "Alice")
       task.update! status: "in_progress"
-      TaskRunnerJob.perform_now task, data: {salutation: "Hello", name: "Alice"}
+
+      TaskRunnerJob.perform_now task
 
       expect(task.reload.results[:greeting]).to be_blank
       expect(task).to be_in_progress
@@ -55,7 +56,8 @@ module Operations
     it "does not perform completed tasks" do
       task = InputTest.build(background: true, salutation: "Hello", name: "World")
       task.update! status: "completed", results: {greeting: "Goodbye Bob"}
-      TaskRunnerJob.perform_now task, data: {salutation: "Hello", name: "Alice"}
+
+      TaskRunnerJob.perform_now task
 
       expect(task.reload.results[:greeting]).to eq "Goodbye Bob"
       expect(task).to be_completed
@@ -64,7 +66,8 @@ module Operations
     it "does not perform failed tasks" do
       task = InputTest.build(background: true, salutation: "Hello", name: "World")
       task.update! status: "failed", results: {failure_message: "Something went wrong"}
-      TaskRunnerJob.perform_now task, data: {salutation: "Hello", name: "Alice"}
+
+      TaskRunnerJob.perform_now task
 
       expect(task.reload.results[:greeting]).to be_blank
       expect(task.reload.results[:failure_message]).to eq "Something went wrong"

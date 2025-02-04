@@ -158,7 +158,7 @@ end
 Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  (TODO: don't let this happen).
 
 ### Results
-A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results (and your data, effectively your "working memory", can be safely discarded).  
+A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
 
 ```ruby
 action :send_invitations do 
@@ -226,7 +226,7 @@ OK - so that's a pretty longwinded way of performing a simple task.  But, in Col
 ### Data and results
 Each operation carries its own, mutable, [data](/app/models/operations/task/data_carrier.rb) for the duration of the operation.  
 
-This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  This data is transient and not stored in the database. If you modify the data then that modification is passed on to the next handler.  (Note - when background tasks are implemented, we may end up storing the data in the database).
+This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  If you modify the data then that modification is passed on to the next handler.  
 
 Within handlers you can read the data directly (the implementation uses `instance_eval`/`instance_exec`).  Here the `build_name` action knows the `first_name` and `last_name` provided and adds in a new property of `name`.  
 
@@ -251,7 +251,7 @@ task.results[:name] # => Alice Aardvark
 
 Because handlers are run in the context of the data carrier, this means you do not have direct access to methods or properties on your task object.  So you need to use `task` to access it - `task.do_something` or `task.some_attribute`.  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task (and the `TestResultCarrier` intercepts when you are testing your operation).  
 
-The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is a Hash that is encoded into JSON with any ActiveRecord models translated using a [GlobalID](https://github.com/rails/globalid) (this uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) so works the same way as passing data to ActiveJob).  
+The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is a Hash that is encoded into JSON with any ActiveRecord models translated using a [GlobalID](https://github.com/rails/globalid) (this uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) so works the same way as passing parameters to ActiveJob).  
 
 Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable (as `GlobalID::Locator` will fail when it tries to load the record).  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results[:raw_data]`.
 
