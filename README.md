@@ -321,9 +321,50 @@ Instead of using `call`, use `start` to initiate the operation.  This takes the 
 
 By itself, this is not particularly useful - it just makes your operation take even longer to complete.  
 
-But, if your operation takes a while to complete, you can retain a reference to the task and display its status in the user-interface (using `status_message` and TurboStream broadcasts).  And if you have multiple sub-tasks, you can `start` them all, do some other work, then wait for those sub-tasks to complete.  As long as you have ActiveJob workers, you get to parallelise your workflow, splitting it across multiple CPUs or even multiple servers.  
+But if your operation may need to wait for something else to happen, background tasks are perfect.  
 
-Or, you can tell your operation for something to change, elsewhere in the system.  I'll put some examples of this in here once I've used them in anger.  
+For example, maybe you're handling a user registration process and you need to wait until the verification link has been clicked.  The verification link goes to another controller and updates the user record in question.  Once clicked, you can then notify the administrator.  
+
+```ruby
+class UserRegistration < Operations::Task 
+  inputs :email
+  starts_with :create_user 
+  
+  action :create_user do 
+    inputs :email 
+
+    self.user = User.create! email: email
+    go_to :send_verification_email 
+  end 
+
+  action :send_verification_email do 
+    inputs :user 
+
+    UserMailer.with(user: user).verification_email.deliver_later 
+    go_to :verified? 
+  end 
+
+  wait_until :verified? do 
+    condition { user.verified? }
+    go_to :notify_administrator 
+  end 
+
+  action :notify_administrator do 
+    inputs :user 
+
+    AdminMailer.with(user: user).verification_completed.deliver_later
+  end
+end
+
+@task = UserRegistration.start email: "someone@example.com"
+```
+Because background tasks use ActiveJobs, every time the `verified?` condition is evaluated, the task object (and hence its data) will be reloaded from the database.  So the `user.verified?` property will be refreshed on each evaluation.  
+
+TODO: add in variable delays and time outs when waiting.  
+
+
+
+
 
 ## Testing
 Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  
@@ -443,7 +484,7 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [ ] Figure out how to stub calling sub-tasks with known results data 
 - [ ] Figure out how to test the parameters passed to sub-tasks when they are called
 - [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)
-- [ ] Make Operations::Task work in the background using ActiveJob
+- [x] Make Operations::Task work in the background using ActiveJob
 - [ ] Add pause/resume capabilities (for example, when a task needs to wait for user input)
 - [ ] Add wait for sub-tasks capabilities
 - [ ] Maybe? Split this out into two gems - one defining an Operation (pure ruby) and another defining the Task (using ActiveJob as part of a Rails Engine)
