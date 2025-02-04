@@ -31,8 +31,8 @@ module Operations::Task::StateManagement
       expect(task).to be_completed
     end
 
-    it "fails if the required inputs are not supplied" do
-      expect(CompletionHandlerInputTest.call).to be_failed
+    it "raises an ArgumentError if the required inputs are not supplied" do
+      expect { CompletionHandlerInputTest.call }.to raise_error(ArgumentError)
     end
   end
 end

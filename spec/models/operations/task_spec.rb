@@ -129,20 +129,15 @@ module Operations
       end
       # standard:enable Lint/ConstantDefinitionInBlock
 
-      it "is failed if a failure is declared" do
-        task = FailureTest.call
-        expect(task).to be_failed
-        expect(task.state).to eq "go"
-        expect(task.results[:failure_message]).to eq "BOOM"
+      it "raises a Failure if a failure is declared" do
+        expect { FailureTest.call }.to raise_error(Operations::Failure)
       end
 
       it "stores the results in the database after failure" do
-        task = FailureTest.call
-        expect(task).to be_failed
-        id = task.id
-        copy = Task.find(id)
+        expect { FailureTest.call }.to raise_error(Operations::Failure)
 
-        expect(copy.results[:failure_message]).to eq "BOOM"
+        task = FailureTest.last
+        expect(task.results[:failure_message]).to eq "BOOM"
       end
     end
 
@@ -218,32 +213,20 @@ module Operations
       end
       # standard:enable Lint/ConstantDefinitionInBlock
       context "in actions" do
-        it "fails and records the exception details" do
-          task = ExceptionTest.call take_a_risk: "some_risky_action"
-          expect(task).to be_failed
-          expect(task.results[:failure_message]).to eq "BOOM"
-          expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
-          expect(task.results[:exception_backtrace]).to be_kind_of(Array)
+        it "raises the exception" do
+          expect { ExceptionTest.call take_a_risk: "some_risky_action" }.to raise_error(ExceptionTest::MyException)
         end
       end
 
       context "in decisions" do
-        it "fails and records the exception details" do
-          task = ExceptionTest.call take_a_risk: "some_risky_decision"
-          expect(task).to be_failed
-          expect(task.results[:failure_message]).to eq "BOOM"
-          expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
-          expect(task.results[:exception_backtrace]).to be_kind_of(Array)
+        it "raises the exception" do
+          expect { ExceptionTest.call take_a_risk: "some_risky_decision" }.to raise_error(ExceptionTest::MyException)
         end
       end
 
       context "in results" do
-        it "fails and records the exception details" do
-          task = ExceptionTest.call take_a_risk: "some_risky_result"
-          expect(task).to be_failed
-          expect(task.results[:failure_message]).to eq "BOOM"
-          expect(task.results[:exception_class]).to eq "Operations::ExceptionTest::MyException"
-          expect(task.results[:exception_backtrace]).to be_kind_of(Array)
+        it "raises the exception" do
+          expect { ExceptionTest.call take_a_risk: "some_risky_result" }.to raise_error(ExceptionTest::MyException)
         end
       end
     end

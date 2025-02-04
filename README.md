@@ -105,7 +105,7 @@ decision :is_it_the_weekend? do
   if_false :go_to_work
 end
 ```
-A decision can also mark a failure, which will terminate the task.  
+A decision can also mark a failure, which will terminate the task and raise an `Operations::Failure`.  
 ```ruby
 decision :authorised? do 
   condition { user.administrator? }
@@ -127,7 +127,7 @@ decision :authorised? do
   if_false { fail_with "Unauthorised" }
 end
 ```
-In this case, the task will fail if there is no `user` specified.  However, `override` is optional (in fact the `optional` method does nothing and is just there for documentation purposes).
+In this case, the task will fail (with an `ArgumentError`) if there is no `user` specified.  However, `override` is optional (in fact the `optional` method does nothing and is just there for documentation purposes).
 
 ### Actions
 An action handler does some work, then moves to another state.  
@@ -390,7 +390,7 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 ## Roadmap
 
 - [x] Specify inputs (required and optional) per-state, not just at the start
-- [ ] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
+- [x] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
 - [ ] Deal with actions that have forgotten to call `go_to` (probably related to future `pause` functionality)
 - [ ] Simplify calling sub-tasks (and testing them)
 - [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)

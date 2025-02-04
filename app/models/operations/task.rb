@@ -20,7 +20,10 @@ module Operations
       process_current_state(data)
     end
 
-    def fail_with(message) = update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
+    def fail_with(message)
+      update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
+      raise Operations::Failure.new(message, self)
+    end
 
     def complete(results) = update!(status: "completed", status_message: "completed", results: results.to_h)
   end

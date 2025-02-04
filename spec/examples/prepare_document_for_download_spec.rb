@@ -72,8 +72,9 @@ module Examples
       user = User.create! name: "Alice", has_permission: false, within_download_limits: true
       document = Document.create! filename: "document.pdf"
 
-      task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
+      expect { PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false }.to raise_error(Operations::Failure)
 
+      task = PrepareDocumentForDownload.last
       expect(task).to be_failed
       expect(task.results[:failure_message]).to eq "unauthorised"
     end
@@ -82,8 +83,9 @@ module Examples
       user = User.create! name: "Alice", has_permission: true, within_download_limits: false
       document = Document.create! filename: "document.pdf"
 
-      task = PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false
+      expect { PrepareDocumentForDownload.call user: user, document: document, use_filename_scrambler: false }.to raise_error(Operations::Failure)
 
+      task = PrepareDocumentForDownload.last
       expect(task).to be_failed
       expect(task.results[:failure_message]).to eq "download_limit_reached"
     end

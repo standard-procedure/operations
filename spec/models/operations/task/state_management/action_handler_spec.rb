@@ -25,8 +25,8 @@ module Operations::Task::StateManagement
       end
       # standard:enable Lint/ConstantDefinitionInBlock
 
-      it "fails if the required inputs are not supplied" do
-        expect(ActionHandlerTest.call).to be_failed
+      it "raises an ArgumentError if the required inputs are not supplied" do
+        expect { ActionHandlerTest.call }.to raise_error(ArgumentError)
       end
 
       it "runs the action" do

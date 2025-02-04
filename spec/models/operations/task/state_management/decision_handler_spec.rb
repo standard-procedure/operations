@@ -26,7 +26,7 @@ module Operations::Task::StateManagement
       # standard:enable Lint/ConstantDefinitionInBlock
 
       it "fails if the required input is not provided" do
-        expect(DecisionHandlerTest.call).to be_failed
+        expect { DecisionHandlerTest.call }.to raise_error(ArgumentError)
       end
 
       it "runs the true handler" do
@@ -97,14 +97,18 @@ module Operations::Task::StateManagement
       # standard:enable Lint/ConstantDefinitionInBlock
 
       it "fails in the true handler" do
-        task = DecisionFailureTest.call value: true
+        expect { DecisionFailureTest.call value: true }.to raise_error(Operations::Failure)
+
+        task = DecisionFailureTest.last
         expect(task).to be_failed
         expect(task.state).to eq "choose"
         expect(task.results[:failure_message]).to eq "truth"
       end
 
       it "fails in the false handler" do
-        task = DecisionFailureTest.call value: false
+        expect { DecisionFailureTest.call value: false }.to raise_error(Operations::Failure)
+
+        task = DecisionFailureTest.last
         expect(task).to be_failed
         expect(task.state).to eq "choose"
         expect(task.results[:failure_message]).to eq "lies"
