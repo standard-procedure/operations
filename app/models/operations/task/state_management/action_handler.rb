@@ -6,7 +6,5 @@ class Operations::Task::StateManagement::ActionHandler
     @action = action
   end
 
-  def call(task, data)
-    @action.nil? ? task.send(@name, data) : data.instance_exec(&@action)
-  end
+  def call(task, data) = data.instance_exec(&@action)
 end
