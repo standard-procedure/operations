@@ -85,11 +85,14 @@ class PrepareDocumentForDownload < Operations::Task
     results.filename = filename || document.filename.to_s
   end
 end
+
+task = PrepareDocumentForDownload.call user: @user, document: @document, use_filename_scrambler: @account.feature_flags[:use_filename_scramber]
+puts task.results[:filename]
 ```
 
-The five states are represented as three [decision](#decisions) handlers, one [action](#actions) handler and a [result](#results) handler.  
+The task declares that it requires `user`, `document` and `use_filename_scrambler` parameters and that it starts in the `authorised?` state.  
 
-The task also declares that it requires a `user`, `document` and `use_filename_scrambler` parameter to be provided, and also declares its initial state - `authorised?`.  
+The five states are represented as three [decision](#decisions) handlers, one [action](#actions) handler and a [result](#results) handler.  
 
 ### Decisions
 A decision handler evaluates a condition, then changes state depending upon if the result is true or false. 
@@ -106,6 +109,7 @@ A decision can also mark a failure, which will terminate the task.
 ```ruby
 decision :authorised? do 
   condition { user.administrator? }
+
   if_true :do_some_work 
   if_false { fail_with "Unauthorised" }
 end
@@ -133,6 +137,7 @@ action :have_a_party do
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music = task.plan_a_party_playlist
+
   go_to :send_invitations
 end
 ```
@@ -146,6 +151,7 @@ action :have_a_party do
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music ||= task.plan_a_party_playlist
+
   go_to :send_invitations
 end
 ```
@@ -161,6 +167,7 @@ action :send_invitations do
     FriendsMailer.with(recipient: friend).party_invitation.deliver_later unless friend.nil?
     friend 
   end.compact
+
   go_to :ready_to_party
 end
 
@@ -180,11 +187,13 @@ You can also specify the required and optional data for your result handler with
 ```ruby
 action :send_invitations do 
   inputs :number_of_guests, :friends
+
   self.invited_friends = (0..number_of_guests).collect do |i|
     friend = friends.pop
     FriendsMailer.with(recipient: friend).party_invitation.deliver_later unless friend.nil?
     friend 
   end.compact
+
   go_to :ready_to_party
 end
 
@@ -204,10 +213,10 @@ class DownloadsController < ApplicationController
     @document = Document.includes(:account).find(params[:id])
     @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: @document.account.use_filename_scrambler?)
     if @task.completed?
-      @filename = @task.results.filename
+      @filename = @task.results[:filename]
       send_data @document.contents, filename: @filename, disposition: "attachment"
     else
-      render action: "error", message: @task.results.failure_message, status: 401
+      render action: "error", message: @task.results[:failure_message], status: 401
     end
   end
 end
@@ -217,16 +226,18 @@ Future dev: I'm going to change this so it raises an exception on failure so it 
 ```ruby
 class DownloadsController < ApplicationController 
   def show 
-    @document = Document.includes(:account).find(params[:id])
-    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: @document.account.use_filename_scrambler?)
+    @document = Document.find(params[:id])
+    @task = PrepareDocumentForDownload.call(user: Current.user, document: @document, use_filename_scrambler: Current.account.use_filename_scrambler?)
+
     send_data @document.contents, filename: @task.results[:filename], disposition: "attachment"
+
   rescue => failure
     render action: "error", locals: {error: failure.message}, status: 422
   end
 end
 ```
 
-OK - so that's a pretty longwinded way of performing a simple task.  But, in Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions (as there are a number of feature flags and per-account configuration options).  When you get to complex decision trees like that, being able to lay them out as state transitions becomes invaluable.  
+OK - so that's a pretty longwinded way of performing a simple task.  But, in Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions (as there are a number of feature flags and per-account configuration options).  Originally these were spread across multiple controllers, models and other objects.  Now they are centralised in a single "operations map" that describes the flowchart used to prepare a document for download - invaluable for comprehension of complex logic.  
 
 ### Data and results
 Each operation carries its own, mutable, [data](/app/models/operations/task/data_carrier.rb) for the duration of the operation.  
@@ -251,7 +262,7 @@ class CombineNames < Operations::Task
 end
 
 task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
-task[:name] # => Alice Aardvark
+task.results[:name] # => Alice Aardvark
 ```
 
 Because handlers are run in the context of the data carrier, this means you do not have direct access to methods or properties on your task object.  So you need to use `task` to access it - `task.do_something` or `task.some_attribute`.  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task (and the `TestResultCarrier` intercepts when you are testing your operation).  
@@ -263,7 +274,7 @@ Be aware that if you do store an ActiveRecord model into your `results` and that
 ### Failures and exceptions
 If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
 
-You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `reeults` has will contain `results[:failure_message]`.
+You can also stop a task at any point by calling `fail_with message`.  This will mark the task as `failed?` and the `results` has will contain `results[:failure_message]`.
 
 (Future dev - going to change this so it raises an exception (or passes it on to the caller) so you don't need to test for `failed?` every time - this will simplify managing sub-tasks).
 
@@ -292,9 +303,11 @@ Coming soon.
 ## Testing
 Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  
 
-Instead, you can test each state handler in isolation.  As the handlers are stateless, we can simulate calling one by creating a task object and then calling the appropriate handler with the data that it expects without hitting the database.  
+Instead, you can test each state handler _in isolation_.  
 
-This is done by calling `handling`, which yields a `test` object with outcomes from the handler that we can inspect.
+As the handlers are stateless, we can call one without hitting the database; instead creating a dummy task object and then triggering the handler with the correct parameters.  
+
+This is done by calling `handling`, which yields a `test` object that we can inspect.
 
 To test if we have moved on to another state (for actions or decisions):
 ```ruby
