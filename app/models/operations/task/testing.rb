@@ -21,13 +21,22 @@ module Operations::Task::Testing
     end
 
     def call(sub_task_class, **data, &result_handler)
-      self.sub_tasks ||= []
-      self.sub_tasks << sub_task_class
+      record_sub_task sub_task_class
+      super
+    end
+
+    def start(sub_task_class, **data, &result_handler)
+      record_sub_task sub_task_class
       super
     end
 
     def complete(results)
       self.completion_results = results
+    end
+
+    private def record_sub_task sub_task_class
+      self.sub_tasks ||= []
+      self.sub_tasks << sub_task_class
     end
   end
 end

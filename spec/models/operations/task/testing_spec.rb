@@ -70,6 +70,17 @@ module Operations
         results.answer = 42
       end
     end
+
+    class BackgroundParentTaskToBeTested < Operations::Task
+      starts_with :trigger_background_task
+
+      action :trigger_background_task do
+        start TaskToBeTested, answer: 42
+        go_to :done
+      end
+
+      result :done
+    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     it "tests for state changes" do
@@ -117,6 +128,12 @@ module Operations
     it "tests that the parent task calls the sub task" do
       ParentTaskToBeTested.handling(:ask_first_question, first_question: "What is the answer to life, the universe, and everything?") do |test|
         expect(test.sub_tasks).to include AnswerQuestion
+      end
+    end
+
+    it "tests that the parent task starts the sub task in the background" do
+      BackgroundParentTaskToBeTested.handling(:trigger_background_task) do |test|
+        expect(test.sub_tasks).to include TaskToBeTested
       end
     end
   end
