@@ -61,6 +61,10 @@ RSpec.describe Operations::GlobalIDSerialiser do
       data = described_class.load(json)
 
       expect(data).to be_a Hash
+      expect(data[:hello]).to eq "world"
+      expect(data[:number]).to eq 123
+      expect(data[:active]).to eq false
+      expect(data[:user]).to eq alice.to_global_id.to_s
       expect(data[:exception_message]).to include "User"
       expect(data[:exception_class]).to eq "ActiveJob::DeserializationError"
       expect(data[:raw_data]).to eq json

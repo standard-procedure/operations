@@ -15,7 +15,15 @@ module Operations
     def self.load(json)
       ActiveJob::Arguments.deserialize(ActiveSupport::JSON.decode(json)).first
     rescue => ex
-      {exception_message: ex.message, exception_class: ex.class.name, raw_data: json.to_s}
+      _load_without_global_ids(json).merge exception_message: ex.message, exception_class: ex.class.name, raw_data: json.to_s
+    end
+
+    def self._load_without_global_ids(json)
+      ActiveSupport::JSON.decode(json).first.tap do |hash|
+        hash.delete("_aj_symbol_keys")
+      end.transform_values do |value|
+        (value.is_a?(Hash) && value.key?("_aj_globalid")) ? value["_aj_globalid"] : value
+      end.transform_keys(&:to_sym)
     end
   end
 end

@@ -249,11 +249,17 @@ task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
 task.results[:name] # => Alice Aardvark
 ```
 
-Because handlers are run in the context of the data carrier, this means you do not have direct access to methods or properties on your task object.  So you need to use `task` to access it - `task.do_something` or `task.some_attribute`.  The exceptions are the `go_to` and `fail_with` methods which the data carrier forwards to the task (and the `TestResultCarrier` intercepts when you are testing your operation).  
+Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exceptions are the `go_to`, `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)).  
 
-The final `results` data from any `result` handlers is stored, along with the task, in the database, so it can be examined later.  It is a Hash that is encoded into JSON with any ActiveRecord models translated using a [GlobalID](https://github.com/rails/globalid) (this uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) so works the same way as passing parameters to ActiveJob).  
+Both your task's `data` and its final `results` are stored in the database, so they can be examined later.  The `results` because that's what you're interested in, the `data` as it can be useful for debugging or auditing purposes.  
 
-Be aware that if you do store an ActiveRecord model into your `results` and that model is later deleted from the database, your task's `results` will be unavailable (as `GlobalID::Locator` will fail when it tries to load the record).  The data is not lost though - if the deserialisation fails, the routine will return the JSON string as `results[:raw_data]`.
+They are both stored as hashes that are encoded into JSON.  
+
+Instead of using the standard [JSON coder](https://api.rubyonrails.org/v4.2/classes/ActiveModel/Serializers/JSON.html), we use a [GlobalIDSerialiser](/lib/operations/global_id_serialiser.rb).  This uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) to transform any models into [GlobalIDs](https://github.com/rails/globalid) before storage and convert them back to models upon retrieval.  
+
+If the original database record was deleted between the time the hash was serialised and when it was retrieved, the `GlobalID::Locator` will fail.  With ActiveJob, this means that the job cannot run and is discarded.  For Operations, we attempt to deserialise a second time, returning the GlobalID string instead of the model.  So be aware that when you access `data` or `results` you may receive a string (similar to `"gid://test-app/User/1"`) instead of the models you were expecting.  And the error handling deserialiser is very simple so you may get format changes in some of the data as well.  If serialisation fails you can access the original JSON string as `data.raw_data` or `results[:raw_data]`.  
+
+TODO: Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
 
 ### Failures and exceptions
 If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
@@ -487,4 +493,5 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Make Operations::Task work in the background using ActiveJob
 - [ ] Add pause/resume capabilities (for example, when a task needs to wait for user input)
 - [ ] Add wait for sub-tasks capabilities
+- [ ] Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
 - [ ] Maybe? Split this out into two gems - one defining an Operation (pure ruby) and another defining the Task (using ActiveJob as part of a Rails Engine)
