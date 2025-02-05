@@ -13,4 +13,5 @@ module Operations
   require "operations/global_id_serialiser"
   require "operations/failure"
   require "operations/cannot_wait_in_foreground"
+  require "operations/timeout"
 end

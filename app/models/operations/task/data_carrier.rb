@@ -5,6 +5,8 @@ class Operations::Task::DataCarrier < OpenStruct
 
   def call(sub_task_class, **data, &result_handler) = task.call(sub_task_class, **data, &result_handler)
 
+  def start(sub_task_class, **data, &result_handler) = task.start(sub_task_class, **data, &result_handler)
+
   def complete(results) = task.complete(results)
 
   def inputs(*names)

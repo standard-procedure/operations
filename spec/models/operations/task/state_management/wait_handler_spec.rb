@@ -2,6 +2,8 @@ require "rails_helper"
 
 module Operations::Task::StateManagement
   RSpec.describe WaitHandler, type: :model do
+    before { ActiveJob::Base.queue_adapter = :test }
+
     # standard:disable Lint/ConstantDefinitionInBlock
     class InternalWaitHandlerTest < Operations::Task
       starts_with :time_to_stop

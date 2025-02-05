@@ -2,6 +2,8 @@ require "rails_helper"
 
 module Operations
   RSpec.describe Task, type: :model do
+    before { ActiveJob::Base.queue_adapter = :test }
+
     describe "sub_tasks" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class ParentTaskWithBlock < Operations::Task
@@ -65,6 +67,19 @@ module Operations
           raise "BOOM"
         end
       end
+
+      class ParentTaskWithBackgroundSubTasks < Operations::Task
+        inputs :name
+        starts_with :call_sub_task
+
+        action :call_sub_task do
+          start SayHello, name: name
+
+          go_to :done
+        end
+
+        result :done
+      end
       # standard:enable Lint/ConstantDefinitionInBlock
 
       it "calls the sub task and uses a block to get the results" do
@@ -75,6 +90,10 @@ module Operations
       it "calls the sub task" do
         task = ParentTaskWithResults.call name: "Alice"
         expect(task.results[:greeting]).to eq "Hello, Alice!"
+      end
+
+      it "starts the sub task in the background" do
+        expect { ParentTaskWithBackgroundSubTasks.call name: "Alice" }.to have_enqueued_job(Operations::TaskRunnerJob)
       end
 
       it "raises an error if the sub task fails" do

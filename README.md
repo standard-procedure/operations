@@ -157,6 +157,9 @@ end
 ```
 Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  (TODO: don't let this happen).
 
+### Waiting
+Wait handlers only work within [background tasks](#background-operations-and-pauses).  They define a condition that is evaluated; if it is false, the task is paused and the condition re-evaluated later.  If it is true, the task moves to the next state.  
+
 ### Results
 A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
 
@@ -221,7 +224,11 @@ class DownloadsController < ApplicationController
 end
 ```
 
-OK - so that's a pretty longwinded way of performing a simple task.  But, in Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions (as there are a number of feature flags and per-account configuration options).  Originally these were spread across multiple controllers, models and other objects.  Now they are centralised in a single "operations map" that describes the flowchart used to prepare a document for download - invaluable for comprehension of complex logic.  
+OK - so that's a pretty longwinded way of performing a simple task.  
+
+But many operations end up as complex flows of conditionals and actions, often spread across multiple classes and objects.  This means that someone trying to understand the rules for an operation can spend a lot of time tracing through code, understanding that flow.  
+
+In Collabor8Online, the actual operation for handling downloads has over twenty states, with half of them being decisions (there are a number of feature flags and per-account configuration options which need to be considered).  Now they are defined as four ruby classes (using [composition](#sub-tasks) to split the workload) and the logic is extremely easy to follow.  
 
 ### Data and results
 Each operation carries its own, mutable, [data](/app/models/operations/task/data_carrier.rb) for the duration of the operation.  
@@ -320,6 +327,8 @@ class PrepareDownload < Operations::Task
 end
 ```
 
+If you want the sub-task to be a [background task](#background-operations-and-pauses), use `start` instead of `call`.  This will return the newly created sub-task immediately.  As the sub-task will not have completed, you cannot access its results unless you [wait](#waiting-for-sub-tasks-to-complete) (which is only possible if the parent task is a background task as well).  
+
 ### Background operations and pauses
 If you have ActiveJob configured, you can run your operations in the background.  
 
@@ -329,6 +338,7 @@ By itself, this is not particularly useful - it just makes your operation take e
 
 But if your operation may need to wait for something else to happen, background tasks are perfect.  
 
+#### Waiting for user input
 For example, maybe you're handling a user registration process and you need to wait until the verification link has been clicked.  The verification link goes to another controller and updates the user record in question.  Once clicked, you can then notify the administrator.  
 
 ```ruby
@@ -366,11 +376,60 @@ end
 ```
 Because background tasks use ActiveJobs, every time the `verified?` condition is evaluated, the task object (and hence its data) will be reloaded from the database.  So the `user.verified?` property will be refreshed on each evaluation.  
 
-TODO: add in variable delays and time outs when waiting.  
+#### Waiting for sub-tasks to complete
+Alternatively, you may have a number of sub-tasks that you want to run in parallel then continue once they have all completed.  This allows you to spread their execution across multiple processes or even servers (depending upon how your job queue processes are configured).
 
+```ruby
+class ParallelTasks < Operations::Task 
+  inputs :number_of_sub_tasks
+  starts_with :start_sub_tasks 
+  
+  action :start_sub_tasks do 
+    inputs :number_of_sub_tasks
+    self.sub_tasks = (1..number_of_sub_tasks).collect { |i| start LongRunningTask, number: i }
+    go_to :do_something_else 
+  end 
 
+  action :do_something_else do 
+    # do something else while the sub-tasks do their thing
+    go_to :sub_tasks_completed? 
+  end 
 
+  wait_until :sub_tasks_completed? do 
+    condition { sub_tasks.all? { |t| t.completed? } }
+    go_to :done
+  end 
 
+  result :done 
+end
+
+@task = ParallelTasks.start number_of_sub_tasks: 5
+```
+The principle is the same as above; we store the newly created sub-tasks in our own `data` property.  As they are ActiveRecord models, they get reloaded each time `sub_tasks_completed?` is evaluated - and we check to see that they have all completed before moving on.  
+
+#### Delays and Timeouts
+When you run an operation in the background, it schedules an [ActiveJob](app/jobs/operations/task_runner_job.rb) which performs the individual state handler, scheduling a follow-up job for subsequent states.  By default, these jobs are scheduled to run after 1 second - so a five state operation will take a minimum of five seconds to complete (depending upon the backlog in your job queues).  This is to prevent a single operation from starving the job process of resources and allow other ActiveJobs the time to execute.  
+
+However, if you know that your `wait_until` condition may take a while you can change the default delay to something longer.  In your operations definition, declare the required delay: 
+
+```ruby
+class ParallelTasks < Operations::Tasks 
+  delay 1.minute
+  ...
+end
+```
+
+Likewise, it's possible for a background task to get stuck.  In the sub-tasks example above, if one of the sub-tasks fails, waiting for them _all_ to complete will never happen.  Every operation has a default timeout of 5 minutes - if the operation has not completed or failed 5 minutes after it was initially started, it will fail with an `Operations::Timeout` exception.  
+
+If you need to change this (such as the user verification example above), you can declare the timeout when defining the operation.  Long timeouts fit well with longer delays, so you're not filling the job queues with jobs that are meaninglessly evaluating your conditions.
+
+```ruby
+class UserRegistration < Operations::Task 
+  timeout 24.hours 
+  delay 15.minutes
+  ...
+end
+```
 
 ## Testing
 Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  
@@ -491,7 +550,9 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [ ] Figure out how to test the parameters passed to sub-tasks when they are called
 - [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)
 - [x] Make Operations::Task work in the background using ActiveJob
-- [ ] Add pause/resume capabilities (for example, when a task needs to wait for user input)
-- [ ] Add wait for sub-tasks capabilities
+- [x] Add pause/resume capabilities (for example, when a task needs to wait for user input)
+- [x] Add wait for sub-tasks capabilities
+- [ ] Add ActiveModel validations support for task parameters
+- [ ] Option to change background job queue and priority settings
 - [ ] Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
 - [ ] Maybe? Split this out into two gems - one defining an Operation (pure ruby) and another defining the Task (using ActiveJob as part of a Rails Engine)

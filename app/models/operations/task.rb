@@ -1,16 +1,27 @@
 module Operations
   class Task < ApplicationRecord
     include StateManagement
-    include SubTasks
     include Deletion
     include Testing
+    include Background
     extend InputValidation
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
     serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
 
+    def call sub_task_class, **data, &result_handler
+      sub_task = sub_task_class.call(**data)
+      result_handler&.call(sub_task.results)
+      sub_task.results
+    end
+
+    def start sub_task_class, **data, &result_handler
+      sub_task_class.start(**data)
+    end
+
     def perform
+      timeout!
       in_progress!
       handler_for(state).call(self, carrier_for(data))
     rescue => ex
@@ -20,17 +31,17 @@ module Operations
 
     def perform_later
       waiting!
-      TaskRunnerJob.perform_later self
+      TaskRunnerJob.set(wait_until: background_delay.from_now).perform_later self
     end
 
-    def self.call(**data)
-      build(background: false, **data).tap do |task|
+    def self.call(**)
+      build(background: false, **).tap do |task|
         task.perform
       end
     end
 
     def self.start(**data)
-      build(background: true, **data).tap do |task|
+      build(background: true, **with_timeout(data)).tap do |task|
         task.perform_later
       end
     end

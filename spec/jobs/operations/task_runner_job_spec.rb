@@ -2,6 +2,9 @@ require "rails_helper"
 
 module Operations
   RSpec.describe TaskRunnerJob, type: :job do
+    include ActiveSupport::Testing::TimeHelpers
+    before { ActiveJob::Base.queue_adapter = :test }
+
     # standard:disable Lint/ConstantDefinitionInBlock
     class InputTest < Task
       inputs :salutation, :name
@@ -26,6 +29,9 @@ module Operations
     end
 
     class BackgroundFailureTest < Task
+      delay 10.seconds
+      timeout 1.minute
+
       starts_with :going_wrong
 
       action :going_wrong do
@@ -39,8 +45,8 @@ module Operations
 
       TaskRunnerJob.perform_now task
 
-      expect(task.reload.results[:greeting]).to eq "Hello Alice"
-      expect(task).to be_completed
+      expect(task.reload).to be_completed
+      expect(task.results[:greeting]).to eq "Hello Alice"
     end
 
     it "does not perform in_progress tasks" do
@@ -49,8 +55,8 @@ module Operations
 
       TaskRunnerJob.perform_now task
 
-      expect(task.reload.results[:greeting]).to be_blank
-      expect(task).to be_in_progress
+      expect(task.reload).to be_in_progress
+      expect(task.results[:greeting]).to be_blank
     end
 
     it "does not perform completed tasks" do
@@ -59,8 +65,8 @@ module Operations
 
       TaskRunnerJob.perform_now task
 
-      expect(task.reload.results[:greeting]).to eq "Goodbye Bob"
-      expect(task).to be_completed
+      expect(task.reload).to be_completed
+      expect(task.results[:greeting]).to eq "Goodbye Bob"
     end
 
     it "does not perform failed tasks" do
@@ -69,9 +75,9 @@ module Operations
 
       TaskRunnerJob.perform_now task
 
-      expect(task.reload.results[:greeting]).to be_blank
-      expect(task.reload.results[:failure_message]).to eq "Something went wrong"
-      expect(task).to be_failed
+      expect(task.reload).to be_failed
+      expect(task.results[:greeting]).to be_blank
+      expect(task.results[:failure_message]).to eq "Something went wrong"
     end
 
     it "resumes a task from the state it is currently in and queues a job to move to the next state" do
@@ -80,7 +86,8 @@ module Operations
 
       expect { TaskRunnerJob.perform_now task }.to have_enqueued_job(TaskRunnerJob)
 
-      expect(task.reload.state).to eq "done"
+      expect(task.reload).to be_waiting
+      expect(task.state).to eq "done"
     end
 
     it "completes a task" do
@@ -89,8 +96,8 @@ module Operations
 
       expect { TaskRunnerJob.perform_now task }.to_not have_enqueued_job(TaskRunnerJob)
 
-      expect(task.reload.state).to eq "done"
-      expect(task).to be_completed
+      expect(task.reload).to be_completed
+      expect(task.state).to eq "done"
     end
 
     it "does not queue another job if the task fails" do
@@ -99,6 +106,17 @@ module Operations
       expect { TaskRunnerJob.perform_now task }.to_not have_enqueued_job(TaskRunnerJob)
 
       expect(task.reload).to be_failed
+    end
+
+    it "fails a task if the timeout has expired" do
+      freeze_time do
+        task = InputTest.build(background: true, _execution_timeout: 1.second.ago, salutation: "Hello", name: "Alice")
+
+        expect { TaskRunnerJob.perform_now task }.to_not have_enqueued_job(TaskRunnerJob)
+
+        expect(task.reload).to be_failed
+        expect(task.results[:failure_message]).to eq "Timeout expired"
+      end
     end
   end
 end

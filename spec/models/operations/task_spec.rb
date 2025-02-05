@@ -2,6 +2,9 @@ require "rails_helper"
 
 module Operations
   RSpec.describe Task, type: :model do
+    include ActiveSupport::Testing::TimeHelpers
+    before { ActiveJob::Base.queue_adapter = :test }
+
     describe "configuration" do
       it "declares which parameters are required" do
         definition = Class.new(Task) do
@@ -232,11 +235,23 @@ module Operations
       end
 
       it "performs the task later if the required parameters are provided" do
-        expect { InputTest.start salutation: "Greetings", name: "Alice" }.to have_enqueued_job(Operations::TaskRunnerJob)
+        freeze_time do
+          expect { InputTest.start salutation: "Greetings", name: "Alice" }.to have_enqueued_job(TaskRunnerJob).at(1.second.from_now)
+        end
+      end
+
+      it "sets the task's timeout" do
+        freeze_time do
+          task = InputTest.start salutation: "Greetings", name: "Alice"
+
+          expect(task.data[:_execution_timeout]).to eq 5.minutes.from_now
+        end
       end
 
       it "performs the task later if optional parameters are provided in addition to the required ones" do
-        expect { InputTest.start salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you" }.to have_enqueued_job(Operations::TaskRunnerJob)
+        freeze_time do
+          expect { InputTest.start salutation: "Greetings", name: "Alice", suffix: "- lovely to meet you" }.to have_enqueued_job(Operations::TaskRunnerJob).at(1.second.from_now)
+        end
       end
     end
 
