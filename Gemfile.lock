@@ -333,11 +333,9 @@ GEM
     standard-performance (1.6.0)
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.23.0)
-    standard-procedure-plumbing (0.5.2)
-      globalid
-    standard_procedure_fabrik (0.1.2)
+    standard_procedure_fabrik (0.2.4)
       activesupport (>= 6.0.0)
-      standard-procedure-plumbing
+      ostruct
     stringio (3.1.2)
     thor (1.3.2)
     timecop (0.9.10)
