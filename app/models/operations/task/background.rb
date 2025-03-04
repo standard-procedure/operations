@@ -2,13 +2,9 @@ module Operations::Task::Background
   extend ActiveSupport::Concern
 
   class_methods do
-    def delay(value)
-      @background_delay = value
-    end
+    def delay(value) = @background_delay = value
 
-    def timeout(value)
-      @execution_timeout = value
-    end
+    def timeout(value) = @execution_timeout = value
 
     def on_timeout(&handler) = @on_timeout = handler
 

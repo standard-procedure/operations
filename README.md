@@ -468,7 +468,7 @@ class WaitForSomething < Operations::Task
   on_timeout do 
     Notifier.send_timeout_notification
   end
-end>
+end
 ```
 
 ## Testing
