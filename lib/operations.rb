@@ -14,4 +14,5 @@ module Operations
   require "operations/failure"
   require "operations/cannot_wait_in_foreground"
   require "operations/timeout"
+  require "operations/no_decision"
 end
