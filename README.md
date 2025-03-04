@@ -116,6 +116,20 @@ end
 ```
 (In theory the block used in the `fail_with` case can do anything within the [DataCarrier context](#data-and-results) - so you could set internal state or call methods on the containing task - but I've not tried this yet).
 
+Alternatively, you can evaluate multiple conditions in your decision handler.  
+
+```ruby 
+decision :is_the_weather_good? do 
+  condition { weather_forecast.sunny? }
+  go_to :the_beach 
+  condition { weather_forecast.rainy? }
+  go_to :grab_an_umbrella 
+  condition { weather_forecast.snowing? }
+  go_to :build_a_snowman 
+end
+```
+If no conditions are matched then the task fails with a `NoDecision` exception.
+
 You can specify the data that is required for a decision handler to run by specifying `inputs` and `optionals`:
 ```ruby
 decision :authorised? do 
@@ -158,7 +172,20 @@ end
 Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  (TODO: don't let this happen).
 
 ### Waiting
-Wait handlers only work within [background tasks](#background-operations-and-pauses).  They define a condition that is evaluated; if it is false, the task is paused and the condition re-evaluated later.  If it is true, the task moves to the next state.  
+Wait handlers are very similar to decision handlers but only work within [background tasks](#background-operations-and-pauses).  
+
+```ruby 
+wait_until :weather_forecast_available? do 
+  condition { weather_forecast.sunny? }
+  go_to :the_beach 
+  condition { weather_forecast.rainy? }
+  go_to :grab_an_umbrella 
+  condition { weather_forecast.snowing? }
+  go_to :build_a_snowman 
+end
+```
+
+If no conditions are met, then, unlike a decision handler, the task continues waiting in the same state.  
 
 ### Results
 A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
@@ -429,6 +456,19 @@ class UserRegistration < Operations::Task
   delay 15.minutes
   ...
 end
+```
+
+Instead of failing with an `Operations::Timeout` exception, you define an `on_timeout` handler for any special processing should the time-out occur.  
+
+```ruby 
+class WaitForSomething < Operations::Task 
+  timeout 10.minutes 
+  delay 1.minute 
+
+  on_timeout do 
+    Notifier.send_timeout_notification
+  end
+end>
 ```
 
 ## Testing
