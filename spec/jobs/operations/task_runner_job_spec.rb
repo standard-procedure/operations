@@ -38,6 +38,28 @@ module Operations
         fail_with "oops"
       end
     end
+
+    class TimeoutHandlerTest < Task
+      delay 10.seconds
+      timeout 1.minute
+
+      starts_with :doing_stuff
+
+      action :doing_stuff do
+        # do something
+      end
+
+      on_timeout do
+        TimeoutHandlerTest.message = "timeout"
+      end
+
+      def self.message=(value)
+        @message = value
+      end
+
+      def self.message = @message ||= ""
+    end
+
     # standard:enable Lint/ConstantDefinitionInBlock
 
     it "performs waiting tasks" do
