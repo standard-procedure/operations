@@ -52,27 +52,27 @@ module Operations
       describe "#to_h" do
         it "returns a hash representation of the task structure" do
           task_hash = GraphvizTestTask.to_h
-          
+
           expect(task_hash[:name]).to eq("Operations::Exporters::GraphvizTestTask")
           expect(task_hash[:initial_state]).to eq(:authorised?)
           expect(task_hash[:states].keys).to include(
-            :authorised?, 
-            :within_download_limits?, 
-            :use_filename_scrambler?, 
-            :scramble_filename, 
+            :authorised?,
+            :within_download_limits?,
+            :use_filename_scrambler?,
+            :scramble_filename,
             :return_filename
           )
-          
+
           # Check decision state
           authorised_state = task_hash[:states][:authorised?]
           expect(authorised_state[:type]).to eq(:decision)
-          expect(authorised_state[:transitions][:true]).to eq(:within_download_limits?)
-          
+          expect(authorised_state[:transitions]["true"]).to eq(:within_download_limits?)
+
           # Check action state
           scramble_state = task_hash[:states][:scramble_filename]
           expect(scramble_state[:type]).to eq(:action)
           expect(scramble_state[:next_state]).to eq(:return_filename)
-          
+
           # Check result state
           result_state = task_hash[:states][:return_filename]
           expect(result_state[:type]).to eq(:result)
@@ -83,19 +83,19 @@ module Operations
         it "returns a GraphViz object" do
           exporter = Graphviz.new(GraphvizTestTask)
           graph = exporter.graph
-          
+
           expect(graph).to be_a(GraphViz)
           expect(graph.type).to eq("digraph") # GraphViz returns a string, not a symbol
         end
       end
-      
+
       # Skip GraphViz output tests if the dot program is not installed
       if system("which dot > /dev/null")
         describe "#to_dot" do
           it "generates a DOT format representation" do
             exporter = Graphviz.new(GraphvizTestTask)
             dot = exporter.to_dot
-            
+
             expect(dot).to be_a(String)
             expect(dot).to include("digraph G {")
             expect(dot).to include("authorised?")
@@ -108,11 +108,11 @@ module Operations
 
         describe "#save" do
           it "can generate a PNG file" do
-            tempfile = Tempfile.new(['task_graph', '.png'])
+            tempfile = Tempfile.new(["task_graph", ".png"])
             begin
               exporter = Graphviz.new(GraphvizTestTask)
               exporter.save(tempfile.path)
-              
+
               expect(File.exist?(tempfile.path)).to be true
               expect(File.size(tempfile.path)).to be > 0
             ensure
@@ -122,14 +122,14 @@ module Operations
           end
 
           it "can generate a SVG file" do
-            tempfile = Tempfile.new(['task_graph', '.svg'])
+            tempfile = Tempfile.new(["task_graph", ".svg"])
             begin
               exporter = Graphviz.new(GraphvizTestTask)
               exporter.save(tempfile.path, format: :svg)
-              
+
               expect(File.exist?(tempfile.path)).to be true
               expect(File.size(tempfile.path)).to be > 0
-              
+
               # SVG file should contain SVG markup
               content = File.read(tempfile.path)
               expect(content).to include("<svg")

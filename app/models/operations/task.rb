@@ -9,7 +9,7 @@ module Operations
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
     serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
-    
+
     # Returns a hash representation of the task's structure
     # Useful for exporting to different formats (e.g., GraphViz)
     def self.to_h
@@ -21,7 +21,7 @@ module Operations
         states: state_handlers.transform_values { |handler| handler_to_h(handler) }
       }
     end
-    
+
     private_class_method def self.handler_to_h(handler)
       case handler
       when StateManagement::DecisionHandler
@@ -57,28 +57,28 @@ module Operations
         }
       end
     end
-    
+
     private_class_method def self.extract_inputs(handler)
       handler.instance_variable_defined?(:@required_inputs) ? handler.instance_variable_get(:@required_inputs) : []
     end
-    
+
     private_class_method def self.extract_optional_inputs(handler)
       handler.instance_variable_defined?(:@optional_inputs) ? handler.instance_variable_get(:@optional_inputs) : []
     end
-    
+
     private_class_method def self.decision_transitions(handler)
       if handler.instance_variable_defined?(:@true_state) && handler.instance_variable_defined?(:@false_state)
         {
-          true: handler.instance_variable_get(:@true_state),
-          false: handler.instance_variable_get(:@false_state)
+          "true" => handler.instance_variable_get(:@true_state),
+          "false" => handler.instance_variable_get(:@false_state)
         }
       else
-        handler.instance_variable_get(:@destinations).map.with_index { |dest, i| ["condition_#{i}".to_sym, dest] }.to_h
+        handler.instance_variable_get(:@destinations).map.with_index { |dest, i| [:"condition_#{i}", dest] }.to_h
       end
     end
-    
+
     private_class_method def self.wait_transitions(handler)
-      handler.instance_variable_get(:@destinations).map.with_index { |dest, i| ["condition_#{i}".to_sym, dest] }.to_h
+      handler.instance_variable_get(:@destinations).map.with_index { |dest, i| [:"condition_#{i}", dest] }.to_h
     end
 
     def call sub_task_class, **data, &result_handler
