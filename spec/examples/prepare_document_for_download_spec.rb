@@ -36,7 +36,7 @@ module Examples
         self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
         # State transition now defined statically
       end
-      goto :return_filename, from: :scramble_filename
+      goto :return_filename
 
       result :return_filename do |results|
         inputs :document

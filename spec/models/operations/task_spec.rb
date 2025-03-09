@@ -101,7 +101,7 @@ module Operations
         action "go" do
           # State transition defined statically
         end
-        goto :done, from: :go
+        goto :done
         result "done" do |results|
           results.hello = "world"
         end
@@ -266,7 +266,7 @@ module Operations
         action :do_something, inputs: [:take_a_risk] do
           # No go_to needed, will use the input for transition
         end
-        goto :take_a_risk, from: :do_something
+        goto :take_a_risk
 
         decision :some_risky_decision do
           condition { raise MyException.new("BOOM") }

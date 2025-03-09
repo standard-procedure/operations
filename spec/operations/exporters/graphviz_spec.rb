@@ -39,7 +39,7 @@ module Operations
           inputs :document
           self.filename = "scrambled_filename"
         end
-        goto :return_filename, from: :scramble_filename
+        goto :return_filename
 
         result :return_filename do |results|
           inputs :document

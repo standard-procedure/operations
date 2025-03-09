@@ -264,6 +264,7 @@ GEM
     regexp_parser (2.10.0)
     reline (0.6.0)
       io-console (~> 0.5)
+    rexml (3.4.1)
     rspec (3.13.0)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
@@ -300,6 +301,8 @@ GEM
     rubocop-performance (1.23.1)
       rubocop (>= 1.48.1, < 2.0)
       rubocop-ast (>= 1.31.1, < 2.0)
+    ruby-graphviz (1.2.5)
+      rexml
     ruby-lsp (0.23.11)
       language_server-protocol (~> 3.17.0)
       prism (>= 1.2, < 2.0)
@@ -380,6 +383,7 @@ DEPENDENCIES
   propshaft
   puma
   rspec-rails
+  ruby-graphviz
   ruby-lsp
   sqlite3
   standard (>= 1.3)

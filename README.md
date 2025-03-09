@@ -77,7 +77,7 @@ class PrepareDocumentForDownload < Operations::Task
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
     # State transition defined statically
   end
-  goto :return_filename, from: :scramble_filename
+  goto :return_filename
 
   result :return_filename do |results|
     inputs :document
@@ -153,7 +153,7 @@ action :have_a_party do
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music = task.plan_a_party_playlist
 end
-goto :send_invitations, from: :have_a_party
+goto :send_invitations
 ```
 
 You can also specify the required and optional data for your action handler using parameters or within the block. `optional` is decorative and helps with documentation. When using the block form, ensure you call `inputs` at the start of the block so that the task fails before doing any meaningful work.
@@ -164,10 +164,10 @@ action :have_a_party, inputs: [:number_of_guests], optional: [:music] do
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music ||= task.plan_a_party_playlist
 end
-goto :send_invitations, from: :have_a_party
+goto :send_invitations
 ```
 
-Defining state transitions statically with `goto` ensures that all transitions are known when the operation class is loaded, making the flow easier to understand and analyze.
+Defining state transitions statically with `goto` ensures that all transitions are known when the operation class is loaded, making the flow easier to understand and analyze. The `goto` method will automatically associate the transition with the most recently defined action handler.
 
 ### Waiting
 Wait handlers are very similar to decision handlers but only work within [background tasks](#background-operations-and-pauses).  
@@ -328,7 +328,7 @@ class PrepareDownload < Operations::Task
     results = call GetAuthorisation, user: user, document: document 
     self.authorised = results[:authorised]
   end
-  goto :whatever_happens_next, from: :get_authorisation
+  goto :whatever_happens_next
 end
 ```
 If the sub-task succeeds, `call` returns the results from the sub-task.  If it fails, then any exceptions are re-raised.  
@@ -346,7 +346,7 @@ class PrepareDownload < Operations::Task
       self.authorised = results[:authorised]
     end
   end
-  goto :whatever_happens_next, from: :get_authorisation
+  goto :whatever_happens_next
 end
 ```
 
@@ -374,14 +374,14 @@ class UserRegistration < Operations::Task
 
     self.user = User.create! email: email
   end
-  goto :send_verification_email, from: :create_user 
+  goto :send_verification_email
 
   action :send_verification_email do 
     inputs :user 
 
     UserMailer.with(user: user).verification_email.deliver_later 
   end
-  goto :verified?, from: :send_verification_email 
+  goto :verified?
 
   wait_until :verified? do 
     condition { user.verified? }
@@ -411,12 +411,12 @@ class ParallelTasks < Operations::Task
     inputs :number_of_sub_tasks
     self.sub_tasks = (1..number_of_sub_tasks).collect { |i| start LongRunningTask, number: i }
   end
-  goto :do_something_else, from: :start_sub_tasks 
+  goto :do_something_else
 
   action :do_something_else do 
     # do something else while the sub-tasks do their thing
   end
-  goto :sub_tasks_completed?, from: :do_something_else 
+  goto :sub_tasks_completed?
 
   wait_until :sub_tasks_completed? do 
     condition { sub_tasks.all? { |t| t.completed? } }
