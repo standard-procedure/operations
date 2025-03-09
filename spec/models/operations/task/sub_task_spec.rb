@@ -16,7 +16,7 @@ module Operations
           end
           # State transition defined statically
         end
-        goto :done
+        go_to :done
 
         result :done do |results|
           inputs :greeting
@@ -34,7 +34,7 @@ module Operations
           self.greeting = results[:greeting]
           # State transition defined statically
         end
-        goto :done
+        go_to :done
 
         result :done do |results|
           inputs :greeting
@@ -77,7 +77,7 @@ module Operations
           start SayHello, name: name
           # State transition defined statically
         end
-        goto :done
+        go_to :done
 
         result :done
       end

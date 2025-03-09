@@ -23,7 +23,7 @@ module Operations
         self.coastline = "long and winding"
         # State transition defined statically
       end
-      goto :done
+      go_to :done
 
       result :done do |results|
         inputs :coastline
@@ -44,7 +44,7 @@ module Operations
         self.first_answer = results[:answer]
         # State transition defined statically
       end
-      goto :ask_second_question
+      go_to :ask_second_question
 
       action :ask_second_question do
         inputs :second_question
@@ -53,7 +53,7 @@ module Operations
         self.second_answer = results[:answer]
         # State transition defined statically
       end
-      goto :done
+      go_to :done
 
       result :done do |results|
         inputs :first_answer, :second_answer
@@ -81,7 +81,7 @@ module Operations
         start TaskToBeTested, answer: 42
         # State transition defined statically
       end
-      goto :done
+      go_to :done
 
       result :done
     end

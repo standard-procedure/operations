@@ -20,12 +20,12 @@ module Operations
       action :stage_one do
         # State transition defined statically
       end
-      goto :stage_two
+      go_to :stage_two
 
       action :stage_two do
         # State transition defined statically
       end
-      goto :done
+      go_to :done
 
       result :done
     end

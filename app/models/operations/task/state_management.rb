@@ -19,7 +19,7 @@ module Operations::Task::StateManagement
 
     def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, inputs, optional, &results)
 
-    def goto(state)
+    def go_to(state)
       # Get the most recently defined action handler
       last_action = state_handlers.values.reverse.find { |h| h.is_a?(ActionHandler) }
       raise ArgumentError, "No action handler defined yet" unless last_action

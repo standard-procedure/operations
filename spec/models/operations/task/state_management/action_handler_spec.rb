@@ -13,7 +13,7 @@ module Operations::Task::StateManagement
           # Since DataCarrier is an OpenStruct, we can set properties directly
           self.i_was_here = true
         end
-        goto :target_state
+        go_to :target_state
 
         action "target_state" do
           raise "I should not be here" unless i_was_here
