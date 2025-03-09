@@ -19,6 +19,14 @@ module Operations::Task::StateManagement
 
     def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, inputs, optional, &results)
 
+    def goto(state, from:)
+      handler = state_handlers[from.to_sym]
+      raise ArgumentError, "No handler defined for state '#{from}'" unless handler
+      raise ArgumentError, "Handler for '#{from}' is not an action handler" unless handler.is_a?(ActionHandler)
+
+      handler.next_state = state.to_sym
+    end
+
     def state_handlers = @state_handlers ||= {}
 
     def handler_for(state) = state_handlers[state.to_sym]
