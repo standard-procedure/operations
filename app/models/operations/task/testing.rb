@@ -7,14 +7,14 @@ module Operations::Task::Testing
       task = new(state: state)
       # Use our own test-specific data carrier that has go_to
       data = TestResultCarrier.new(data.merge(task: task))
-      
+
       # Testing doesn't use the database, so handle serialization by overriding task's go_to
       # to avoid serialization errors
       def task.go_to(state, data = {}, message: nil)
         self.state = state
         # Don't call super to avoid serialization
       end
-      
+
       handler_for(state).call(task, data)
       data.completion_results.nil? ? block.call(data) : block.call(data.completion_results)
     end
@@ -42,7 +42,7 @@ module Operations::Task::Testing
     def call(sub_task_class, **data, &result_handler)
       record_sub_task sub_task_class
       # Return mock data for testing
-      result = {:answer => 42}
+      result = {answer: 42}
       result_handler&.call(result)
       result
     end

@@ -29,13 +29,11 @@ class Operations::Task::StateManagement::DecisionHandler
     next_state = data.instance_eval(&@conditions.first) ? @true_state : @false_state
     if next_state.respond_to?(:call)
       data.instance_eval(&next_state)
-    else
+    elsif data.respond_to?(:next_state=)
       # Check if we're in a testing environment (data is TestResultCarrier)
-      if data.respond_to?(:next_state=)
-        data.go_to(next_state)
-      else
-        task.go_to(next_state, data.to_h)
-      end
+      data.go_to(next_state)
+    else
+      task.go_to(next_state, data.to_h)
     end
   end
 
@@ -43,7 +41,7 @@ class Operations::Task::StateManagement::DecisionHandler
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     raise Operations::NoDecision.new("No conditions matched #{@name}") if condition.nil?
     index = @conditions.index condition
-    
+
     # Check if we're in a testing environment (data is TestResultCarrier)
     if data.respond_to?(:next_state=)
       data.go_to(@destinations[index])
