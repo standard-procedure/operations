@@ -114,13 +114,9 @@ module Operations
 
         transitions.each_with_index do |(condition, target), index|
           # Get custom label if available
-          label = if handler&.respond_to?(:condition_labels) && handler.condition_labels[index]
-            handler.condition_labels[index]
-          else
-            condition.to_s
-          end
+          label = (handler&.respond_to?(:condition_labels) && handler.condition_labels[index]) ? handler.condition_labels[index] : target.to_s
 
-          if target.is_a?(Symbol) || target.is_a?(String)
+          if (target.is_a?(Symbol) || target.is_a?(String)) && nodes[target.to_sym]
             graph.add_edges(nodes[state_name], nodes[target.to_sym], label: label)
           elsif target.respond_to?(:call)
             # Create a special node to represent the custom action
@@ -154,13 +150,9 @@ module Operations
         # Add edges for each transition
         transitions.each_with_index do |(condition, target), index|
           # Get custom label if available
-          label = if handler&.respond_to?(:condition_labels) && handler.condition_labels[index]
-            handler.condition_labels[index]
-          else
-            condition.to_s
-          end
+          label = (handler&.respond_to?(:condition_labels) && handler.condition_labels[index]) ? handler.condition_labels[index] : target.to_s
 
-          if target.is_a?(Symbol) || target.is_a?(String)
+          if (target.is_a?(Symbol) || target.is_a?(String)) && nodes[target.to_sym]
             graph.add_edges(nodes[state_name], nodes[target.to_sym],
               label: label,
               style: "solid")
