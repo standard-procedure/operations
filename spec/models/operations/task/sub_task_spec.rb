@@ -14,8 +14,9 @@ module Operations
           call SayHello, name: name do |results|
             self.greeting = results[:greeting]
           end
-          go_to :done
+          # State transition defined statically
         end
+        goto :done, from: :call_sub_task
 
         result :done do |results|
           inputs :greeting
@@ -31,9 +32,9 @@ module Operations
         action :call_sub_task do
           results = call SayHello, name: name
           self.greeting = results[:greeting]
-
-          go_to :done
+          # State transition defined statically
         end
+        goto :done, from: :call_sub_task
 
         result :done do |results|
           inputs :greeting
@@ -74,9 +75,9 @@ module Operations
 
         action :call_sub_task do
           start SayHello, name: name
-
-          go_to :done
+          # State transition defined statically
         end
+        goto :done, from: :call_sub_task
 
         result :done
       end

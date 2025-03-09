@@ -34,8 +34,9 @@ module Examples
       action :scramble_filename do
         inputs :document
         self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-        go_to :return_filename
+        # State transition now defined statically
       end
+      goto :return_filename, from: :scramble_filename
 
       result :return_filename do |results|
         inputs :document

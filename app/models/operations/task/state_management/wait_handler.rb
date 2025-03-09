@@ -14,10 +14,10 @@ class Operations::Task::StateManagement::WaitHandler
     raise Operations::CannotWaitInForeground.new("#{task.class} cannot wait in the foreground", task) unless task.background?
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     if condition.nil?
-      data.go_to task.state
+      task.go_to(task.state, data.to_h)
     else
       index = @conditions.index condition
-      data.go_to @destinations[index]
+      task.go_to(@destinations[index], data.to_h)
     end
   end
 end

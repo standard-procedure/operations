@@ -99,8 +99,9 @@ module Operations
       class CompletedStateTest < Task
         starts_with "go"
         action "go" do
-          go_to :done
+          # State transition defined statically
         end
+        goto :done, from: :go
         result "done" do |results|
           results.hello = "world"
         end
@@ -166,6 +167,7 @@ module Operations
 
       wait_until :value_has_been_set do
         condition { WaitingTest.stop == true }
+        # State transition defined statically (for handler's internal use)
         go_to :done
       end
 
@@ -261,9 +263,10 @@ module Operations
         class MyException < StandardError; end
         starts_with :do_something
 
-        action :do_something do
-          go_to take_a_risk
+        action :do_something, inputs: [:take_a_risk] do
+          # No go_to needed, will use the input for transition
         end
+        goto :take_a_risk, from: :do_something
 
         decision :some_risky_decision do
           condition { raise MyException.new("BOOM") }

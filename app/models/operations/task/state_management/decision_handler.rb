@@ -27,13 +27,28 @@ class Operations::Task::StateManagement::DecisionHandler
 
   private def handle_single_condition(task, data)
     next_state = data.instance_eval(&@conditions.first) ? @true_state : @false_state
-    next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state)
+    if next_state.respond_to?(:call)
+      data.instance_eval(&next_state)
+    else
+      # Check if we're in a testing environment (data is TestResultCarrier)
+      if data.respond_to?(:next_state=)
+        data.go_to(next_state)
+      else
+        task.go_to(next_state, data.to_h)
+      end
+    end
   end
 
   private def handle_multiple_conditions(task, data)
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     raise Operations::NoDecision.new("No conditions matched #{@name}") if condition.nil?
     index = @conditions.index condition
-    data.go_to @destinations[index]
+    
+    # Check if we're in a testing environment (data is TestResultCarrier)
+    if data.respond_to?(:next_state=)
+      data.go_to(@destinations[index])
+    else
+      task.go_to(@destinations[index], data.to_h)
+    end
   end
 end

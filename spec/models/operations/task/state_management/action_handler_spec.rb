@@ -2,47 +2,7 @@ require "rails_helper"
 
 module Operations::Task::StateManagement
   RSpec.describe ActionHandler, type: :model do
-    context "defined on the action with runtime transitions" do
-      # standard:disable Lint/ConstantDefinitionInBlock
-      class ActionHandlerRuntimeTest < Operations::Task
-        starts_with "do_something"
-
-        action "do_something" do
-          inputs :next_state
-          optional :something_else
-
-          self.i_was_here = true
-          go_to next_state
-        end
-
-        action "this" do
-          raise "I should not be here" unless i_was_here
-        end
-
-        action "that" do
-          raise "I should not be here" unless i_was_here
-        end
-      end
-      # standard:enable Lint/ConstantDefinitionInBlock
-
-      it "raises an ArgumentError if the required inputs are not supplied" do
-        expect { ActionHandlerRuntimeTest.call }.to raise_error(ArgumentError)
-      end
-
-      it "runs the action" do
-        task = ActionHandlerRuntimeTest.call next_state: "this"
-        expect(task.state).to eq "this"
-
-        task = ActionHandlerRuntimeTest.call next_state: "that"
-        expect(task.state).to eq "that"
-        expect(task).to be_in_progress
-      end
-
-      it "does not complete the task" do
-        task = ActionHandlerRuntimeTest.call next_state: "that"
-        expect(task).to be_in_progress
-      end
-    end
+    # We've removed the runtime transitions test since they're no longer supported
 
     context "defined with static transitions" do
       # standard:disable Lint/ConstantDefinitionInBlock
@@ -76,6 +36,14 @@ module Operations::Task::StateManagement
         task = ActionHandlerStaticTest.call target_state: "different_target"
         expect(task.state).to eq "different_target"
         expect(task).to be_in_progress
+      end
+    end
+
+    context "attempting to use runtime transitions" do
+      it "cannot call go_to in an action block" do
+        # Create a data carrier and try to call go_to on it directly to prove it doesn't exist
+        data_carrier = Operations::Task::DataCarrier.new(task: nil)
+        expect { data_carrier.go_to("any_state") }.to raise_error(NoMethodError, /undefined method `go_to'/)
       end
     end
   end
