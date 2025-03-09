@@ -10,9 +10,19 @@ class Operations::Task::StateManagement::DecisionHandler
     instance_eval(&config)
   end
 
-  def condition(&condition) = @conditions << condition
+  def condition(destination = nil, options = {}, &condition)
+    @conditions << condition
+    @destinations << destination if destination
+    @condition_labels ||= {}
+    condition_index = @conditions.size - 1
+    @condition_labels[condition_index] = options[:label] if options[:label]
+  end
 
   def go_to(destination) = @destinations << destination
+
+  def condition_labels
+    @condition_labels ||= {}
+  end
 
   def if_true(state = nil, &handler) = @true_state = state || handler
 

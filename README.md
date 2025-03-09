@@ -563,10 +563,27 @@ exporter.save("my_task_flow.svg", format: :svg)
 dot_string = exporter.to_dot
 ```
 
+### Custom Condition Labels
+
+By default, condition transitions in the visualization are labeled based on the state they lead to. For more clarity, you can provide custom labels when defining conditions:
+
+```ruby
+wait_until :document_status do
+  condition(:ready_for_download, label: "Document processed successfully") { document.processed? }
+  condition(:processing_failed, label: "Processing error occurred") { document.error? }
+end
+
+decision :user_access_level do
+  condition(:allow_full_access, label: "User is an admin") { user.admin? }
+  condition(:provide_limited_access, label: "User is a regular member") { user.member? }
+  condition(:deny_access, label: "User has no permissions") { !user.member? }
+end
+```
+
 The visualization includes:
 - Color-coded nodes by state type (decisions, actions, wait states, results)
 - Required and optional inputs for each state
-- Transition conditions between states
+- Transition conditions between states with custom labels when provided
 - Special handling for custom transition blocks
 
 Note: To use the GraphViz exporter, you need to have the GraphViz tool installed on your system. On macOS, you can install it with `brew install graphviz`, on Ubuntu with `apt-get install graphviz`, and on Windows with the installer from the [GraphViz website](https://graphviz.org/download/).

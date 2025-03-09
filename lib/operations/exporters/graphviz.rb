@@ -5,6 +5,10 @@ module Operations
     class Graphviz
       attr_reader :task_class
 
+      def self.export(task_class)
+        new(task_class).to_dot
+      end
+
       def initialize(task_class)
         @task_class = task_class
       end
@@ -104,9 +108,20 @@ module Operations
       end
 
       def add_decision_edges(graph, nodes, state_name, transitions)
-        transitions.each do |condition, target|
+        # Get the handler for this state to access condition labels
+        task_state = task_class.respond_to?(:states) ? task_class.states[state_name.to_sym] : nil
+        handler = task_state[:handler] if task_state
+
+        transitions.each_with_index do |(condition, target), index|
+          # Get custom label if available
+          label = if handler&.respond_to?(:condition_labels) && handler.condition_labels[index]
+            handler.condition_labels[index]
+          else
+            condition.to_s
+          end
+
           if target.is_a?(Symbol) || target.is_a?(String)
-            graph.add_edges(nodes[state_name], nodes[target.to_sym], label: condition.to_s)
+            graph.add_edges(nodes[state_name], nodes[target.to_sym], label: label)
           elsif target.respond_to?(:call)
             # Create a special node to represent the custom action
             block_node_name = "#{state_name}_#{condition}_block"
@@ -118,13 +133,17 @@ module Operations
               fontcolor: "black")
 
             graph.add_edges(nodes[state_name], block_node,
-              label: condition.to_s,
+              label: label,
               style: "dashed")
           end
         end
       end
 
       def add_wait_edges(graph, nodes, state_name, transitions)
+        # Get the handler for this state to access condition labels
+        task_state = task_class.respond_to?(:states) ? task_class.states[state_name.to_sym] : nil
+        handler = task_state[:handler] if task_state
+
         # Add a self-loop for wait condition
         graph.add_edges(nodes[state_name], nodes[state_name],
           label: "waiting",
@@ -133,10 +152,17 @@ module Operations
           dir: "back")
 
         # Add edges for each transition
-        transitions.each do |condition, target|
+        transitions.each_with_index do |(condition, target), index|
+          # Get custom label if available
+          label = if handler&.respond_to?(:condition_labels) && handler.condition_labels[index]
+            handler.condition_labels[index]
+          else
+            condition.to_s
+          end
+
           if target.is_a?(Symbol) || target.is_a?(String)
             graph.add_edges(nodes[state_name], nodes[target.to_sym],
-              label: condition.to_s,
+              label: label,
               style: "solid")
           end
         end

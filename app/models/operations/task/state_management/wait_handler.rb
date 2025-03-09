@@ -6,9 +6,19 @@ class Operations::Task::StateManagement::WaitHandler
     instance_eval(&config)
   end
 
-  def condition(&condition) = @conditions << condition
+  def condition(destination = nil, options = {}, &condition)
+    @conditions << condition
+    @destinations << destination if destination
+    @condition_labels ||= {}
+    condition_index = @conditions.size - 1
+    @condition_labels[condition_index] = options[:label] if options[:label]
+  end
 
   def go_to(state) = @destinations << state
+
+  def condition_labels
+    @condition_labels ||= {}
+  end
 
   def call(task, data)
     raise Operations::CannotWaitInForeground.new("#{task.class} cannot wait in the foreground", task) unless task.background?

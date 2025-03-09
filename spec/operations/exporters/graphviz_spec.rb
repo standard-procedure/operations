@@ -144,6 +144,24 @@ module Operations
         # Display warning message
         puts "GraphViz dot command not found in PATH. Skipping GraphViz output tests."
       end
+
+      describe ".export" do
+        it "returns a string representation of the graph" do
+          exporter = instance_double(Graphviz, to_dot: "DOT output with Document is ready and Processing failed")
+          allow(Graphviz).to receive(:new).and_return(exporter)
+
+          expect(Operations::Exporters::Graphviz.export(GraphvizTestTask)).to be_a(String)
+        end
+
+        it "includes custom condition labels in the graph" do
+          exporter = instance_double(Graphviz, to_dot: "DOT output with Document is ready and Processing failed")
+          allow(Graphviz).to receive(:new).and_return(exporter)
+
+          graph = Operations::Exporters::Graphviz.export(GraphvizTestTask)
+          expect(graph).to include("Document is ready")
+          expect(graph).to include("Processing failed")
+        end
+      end
     end
   end
 end
