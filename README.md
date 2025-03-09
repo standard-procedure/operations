@@ -545,6 +545,32 @@ expect { MyOperation.handling(:a_failure, some: "data") }.to raise_error(SomeExc
 
 If you are using RSpec, you must `require "operations/matchers"` to make the matchers available to your specs.  
 
+## Visualization
+
+Operations tasks can be visualized as flowcharts using the built-in GraphViz exporter. This helps you understand the flow of your operations and can be useful for documentation.
+
+```ruby
+# Export a task to GraphViz
+exporter = Operations::Exporters::Graphviz.new(MyTask)
+
+# Save as PNG
+exporter.save("my_task_flow.png")
+
+# Save as SVG
+exporter.save("my_task_flow.svg", format: :svg)
+
+# Get DOT format
+dot_string = exporter.to_dot
+```
+
+The visualization includes:
+- Color-coded nodes by state type (decisions, actions, wait states, results)
+- Required and optional inputs for each state
+- Transition conditions between states
+- Special handling for custom transition blocks
+
+Note: To use the GraphViz exporter, you need to have the GraphViz tool installed on your system. On macOS, you can install it with `brew install graphviz`, on Ubuntu with `apt-get install graphviz`, and on Windows with the installer from the [GraphViz website](https://graphviz.org/download/).
+
 ## Installation
 Step 1: Add the gem to your Rails application's Gemfile:
 ```ruby
@@ -588,6 +614,7 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Make Operations::Task work in the background using ActiveJob
 - [x] Add pause/resume capabilities (for example, when a task needs to wait for user input)
 - [x] Add wait for sub-tasks capabilities
+- [x] Add GraphViz visualization export for task flows
 - [ ] Add ActiveModel validations support for task parameters
 - [ ] Option to change background job queue and priority settings
 - [ ] Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
