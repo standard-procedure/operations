@@ -13,7 +13,7 @@ module Operations::Task::StateManagement
 
     def decision(name, &config) = state_handlers[name.to_sym] = DecisionHandler.new(name, &config)
 
-    def action(name, inputs: [], optional: [], &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, inputs, optional, &handler)
+    def action(name, &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, &handler)
 
     def wait_until(name, &config) = state_handlers[name.to_sym] = WaitHandler.new(name, &config)
 

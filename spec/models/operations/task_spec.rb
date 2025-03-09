@@ -261,12 +261,17 @@ module Operations
       # standard:disable Lint/ConstantDefinitionInBlock
       class ExceptionTest < Operations::Task
         class MyException < StandardError; end
-        starts_with :do_something
+        inputs :take_a_risk
+        starts_with :choose_where_to_go
 
-        action :do_something, inputs: [:take_a_risk] do
-          # No go_to needed, will use the input for transition
+        decision :choose_where_to_go do
+          condition { take_a_risk == "some_risky_decision" }
+          go_to :some_risky_decision
+          condition { take_a_risk == "some_risky_action" }
+          go_to :some_risky_action
+          condition { take_a_risk == "some_risky_result" }
+          go_to :some_risky_result
         end
-        go_to :take_a_risk
 
         decision :some_risky_decision do
           condition { raise MyException.new("BOOM") }

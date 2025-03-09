@@ -1,10 +1,10 @@
 class Operations::Task::StateManagement::ActionHandler
   attr_accessor :next_state
 
-  def initialize name, inputs = [], optional = [], &action
+  def initialize name, &action
     @name = name.to_sym
-    @required_inputs = inputs
-    @optional_inputs = optional
+    @required_inputs = []
+    @optional_inputs = []
     @action = action
     @next_state = nil
   end
