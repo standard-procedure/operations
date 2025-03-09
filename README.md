@@ -75,8 +75,9 @@ class PrepareDocumentForDownload < Operations::Task
     inputs :document
 
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-    go_to :return_filename
+    # State transition defined statically
   end
+  goto :return_filename, from: :scramble_filename
 
   result :return_filename do |results|
     inputs :document
@@ -144,32 +145,29 @@ end
 In this case, the task will fail (with an `ArgumentError`) if there is no `user` specified.  However, `override` is optional (in fact the `optional` method does nothing and is just there for documentation purposes).
 
 ### Actions
-An action handler does some work, then moves to another state.  
+An action handler does some work, and then transitions to another state. The state transition is defined statically after the action, using the `goto` method.
 
 ```ruby 
 action :have_a_party do
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music = task.plan_a_party_playlist
-
-  go_to :send_invitations
 end
+goto :send_invitations, from: :have_a_party
 ```
-You can specify the required and optional data for your action handler within the block.  `optional` is decorative and to help with your documentation.  Ensure you call `inputs` at the start of the block so that the task fails before you do any meaningful work.  
+
+You can also specify the required and optional data for your action handler using parameters or within the block. `optional` is decorative and helps with documentation. When using the block form, ensure you call `inputs` at the start of the block so that the task fails before doing any meaningful work.
 
 ```ruby 
-action :have_a_party do
-  inputs :number_of_guests 
-  optional :music 
-
+action :have_a_party, inputs: [:number_of_guests], optional: [:music] do
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music ||= task.plan_a_party_playlist
-
-  go_to :send_invitations
 end
+goto :send_invitations, from: :have_a_party
 ```
-Do not forget to call `go_to` from your action handler, otherwise the operation will just stop whilst still being marked as in progress.  (TODO: don't let this happen).
+
+Defining state transitions statically with `goto` ensures that all transitions are known when the operation class is loaded, making the flow easier to understand and analyze.
 
 ### Waiting
 Wait handlers are very similar to decision handlers but only work within [background tasks](#background-operations-and-pauses).  
@@ -283,7 +281,7 @@ task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
 task.results[:name] # => Alice Aardvark
 ```
 
-Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exceptions are the `go_to`, `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)).  
+Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exception is the `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)). Note that `go_to` has been removed from the data carrier to enforce static state transitions with the `goto` method.  
 
 Both your task's `data` and its final `results` are stored in the database, so they can be examined later.  The `results` because that's what you're interested in, the `data` as it can be useful for debugging or auditing purposes.  
 
@@ -329,9 +327,8 @@ class PrepareDownload < Operations::Task
 
     results = call GetAuthorisation, user: user, document: document 
     self.authorised = results[:authorised]
-
-    go_to :whatever_happens_next
   end
+  goto :whatever_happens_next, from: :get_authorisation
 end
 ```
 If the sub-task succeeds, `call` returns the results from the sub-task.  If it fails, then any exceptions are re-raised.  
@@ -348,9 +345,8 @@ class PrepareDownload < Operations::Task
     call GetAuthorisation, user: user, document: document do |results|
       self.authorised = results[:authorised]
     end
-
-    go_to :whatever_happens_next
   end
+  goto :whatever_happens_next, from: :get_authorisation
 end
 ```
 
@@ -377,15 +373,15 @@ class UserRegistration < Operations::Task
     inputs :email 
 
     self.user = User.create! email: email
-    go_to :send_verification_email 
-  end 
+  end
+  goto :send_verification_email, from: :create_user 
 
   action :send_verification_email do 
     inputs :user 
 
     UserMailer.with(user: user).verification_email.deliver_later 
-    go_to :verified? 
-  end 
+  end
+  goto :verified?, from: :send_verification_email 
 
   wait_until :verified? do 
     condition { user.verified? }
@@ -414,13 +410,13 @@ class ParallelTasks < Operations::Task
   action :start_sub_tasks do 
     inputs :number_of_sub_tasks
     self.sub_tasks = (1..number_of_sub_tasks).collect { |i| start LongRunningTask, number: i }
-    go_to :do_something_else 
-  end 
+  end
+  goto :do_something_else, from: :start_sub_tasks 
 
   action :do_something_else do 
     # do something else while the sub-tasks do their thing
-    go_to :sub_tasks_completed? 
-  end 
+  end
+  goto :sub_tasks_completed?, from: :do_something_else 
 
   wait_until :sub_tasks_completed? do 
     condition { sub_tasks.all? { |t| t.completed? } }
@@ -584,7 +580,7 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 
 - [x] Specify inputs (required and optional) per-state, not just at the start
 - [x] Always raise errors instead of just recording a failure (will be useful when dealing with sub-tasks)
-- [ ] Deal with actions that have forgotten to call `go_to` (probably related to future `pause` functionality)
+- [x] Deal with actions that have forgotten to call `go_to` by enforcing static state transitions with `goto`
 - [x] Simplify calling sub-tasks (and testing them)
 - [ ] Figure out how to stub calling sub-tasks with known results data 
 - [ ] Figure out how to test the parameters passed to sub-tasks when they are called
