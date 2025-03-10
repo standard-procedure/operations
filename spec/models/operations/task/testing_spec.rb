@@ -45,7 +45,6 @@ module Operations
 
         results = call AnswerQuestion, question: first_question
         self.first_answer = results[:answer]
-        # State transition defined statically
       end
       go_to :ask_second_question
 
@@ -54,7 +53,6 @@ module Operations
 
         results = call AnswerQuestion, question: second_question
         self.second_answer = results[:answer]
-        # State transition defined statically
       end
       go_to :done
 
@@ -87,9 +85,28 @@ module Operations
 
       result :done
     end
+
+    class ComplexDecisionsTest < Operations::Task
+      inputs :achievements
+      starts_with :whos_the_smartest?
+
+      decision :whos_the_smartest? do
+        inputs :achievements
+        condition { achievements.include? "New York" }
+        go_to :humans
+        condition { achievements.include? "mucking about in the water" }
+        go_to :dolphins
+        condition { achievements.include? "multi-dimensional being" }
+        go_to :mice
+      end
+
+      result :humans
+      result :dolphins
+      result :mice
+    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
-    context "decision handlers" do
+    context "simple decision handlers" do
       it "tests for state changes" do
         TaskToBeTested.handling(:question, answer: 42) do |test|
           expect(test.next_state).to eq :make_a_fjord
@@ -111,6 +128,21 @@ module Operations
         TaskToBeTested.handling(:question, answer: 99) do |test|
           expect(test).to have_failed_with "the earth has been demolished"
         end
+      end
+    end
+
+    context "complex decision handlers" do
+      it "changes state as expected" do
+        ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["guns", "the wheel", "New York"]) do |test|
+          expect(test).to have_moved_to :humans
+        end
+        ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["mucking about in the water", "having a good time"]) do |test|
+          expect(test).to have_moved_to :dolphins
+        end
+        ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["multi-dimensional being", "having a good time"]) do |test|
+          expect(test).to have_moved_to :mice
+        end
+        expect { ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["banging rocks together"]) }.to raise_error(NoDecision)
       end
     end
 

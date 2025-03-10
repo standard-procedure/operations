@@ -44,12 +44,6 @@ class Operations::Task::StateManagement::DecisionHandler
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     raise Operations::NoDecision.new("No conditions matched #{@name}") if condition.nil?
     index = @conditions.index condition
-
-    # Check if we're in a testing environment (data is TestResultCarrier)
-    if data.respond_to?(:next_state=)
-      data.go_to(@destinations[index])
-    else
-      task.go_to(@destinations[index], data.to_h)
-    end
+    data.go_to(@destinations[index])
   end
 end
