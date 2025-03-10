@@ -8,8 +8,12 @@ module Operations
     extend InputValidation
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
+
     serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
     serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
+
+    has_many :task_participants, class_name: "Operations::TaskParticipant", dependent: :destroy
+    after_save :record_participants
 
     def call sub_task_class, **data, &result_handler
       sub_task = sub_task_class.call(**data)
@@ -60,6 +64,20 @@ module Operations
     def complete(results) = update!(status: "completed", status_message: "completed", results: results.to_h)
 
     private def carrier_for(data) = data.is_a?(DataCarrier) ? data : DataCarrier.new(data.merge(task: self))
+
+    private def record_participants
+      record_participants_in :data, data.select { |key, value| value.is_a? Participant }
+      record_participants_in :results, results.select { |key, value| value.is_a? Participant }
+    end
+
+    private def record_participants_in context, participants
+      task_participants.where(context: context).where.not(role: participants.keys).delete_all
+      participants.each do |role, participant|
+        task_participants.where(context: context, role: role).first_or_initialize.tap do |task_participant|
+          task_participant.update! participant: participant
+        end
+      end
+    end
 
     def self.build(background:, **data)
       validate_inputs! data

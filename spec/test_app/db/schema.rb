@@ -17,13 +17,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_161543) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "operations_task_participants", force: :cascade do |t|
+    t.integer "task_id", null: false
+    t.string "participant_type", null: false
+    t.integer "participant_id", null: false
+    t.string "role", null: false
+    t.string "context", default: "data", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["participant_type", "participant_id"], name: "index_operations_task_participants_on_participant"
+    t.index ["task_id", "participant_type", "participant_id", "role", "context"], name: "index_operations_task_participants_on_full_identity", unique: true
+    t.index ["task_id"], name: "index_operations_task_participants_on_task_id"
+  end
+
   create_table "operations_tasks", force: :cascade do |t|
     t.string "type"
     t.integer "status", default: 0, null: false
     t.string "state", null: false
     t.string "status_message", default: "", null: false
-    t.text "data", default: "{}"
-    t.text "results", default: "{}"
+    t.text "data"
+    t.text "results"
     t.boolean "background", default: false, null: false
     t.datetime "delete_at", null: false
     t.datetime "created_at", null: false
@@ -39,4 +52,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_161543) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
+
+  add_foreign_key "operations_task_participants", "operations_tasks", column: "task_id"
 end

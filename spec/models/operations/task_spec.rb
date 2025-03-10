@@ -159,6 +159,7 @@ module Operations
       inputs :salutation, :name
       starts_with :generate_greeting
       result :generate_greeting do |results|
+        results.name = name
         results.greeting = [salutation, name, suffix].compact.join(" ")
       end
     end
@@ -304,6 +305,44 @@ module Operations
         it "raises the exception" do
           expect { ExceptionTest.call take_a_risk: "some_risky_result" }.to raise_error(ExceptionTest::MyException)
         end
+      end
+    end
+
+    describe "serialisation" do
+      it "stores primitive data in the data field" do
+        @task = InputTest.call salutation: "Hello", name: "Alice"
+
+        expect(@task.data[:salutation]).to eq "Hello"
+        expect(@task.data[:name]).to eq "Alice"
+      end
+
+      it "stores models in the data field with an index" do
+        @db = Fabrik::Database.new
+        @alice = @db.users.create :alice, name: "Alice"
+
+        @task = InputTest.call salutation: "Hello", name: @alice
+
+        expect(@task.data[:salutation]).to eq "Hello"
+        expect(@task.data[:name]).to eq @alice
+        expect(@task.task_participants.in(:data).size).to eq 1
+        expect(@task.task_participants.in(:data).first.participant).to eq @alice
+      end
+
+      it "stores primitive data in the results field" do
+        @task = InputTest.call salutation: "Hello", name: "Alice"
+
+        expect(@task.results[:name]).to eq "Alice"
+      end
+
+      it "stores models in the results field with an index" do
+        @db = Fabrik::Database.new
+        @alice = @db.users.create :alice, name: "Alice"
+
+        @task = InputTest.call salutation: "Hello", name: @alice
+
+        expect(@task.results[:name]).to eq @alice
+        expect(@task.task_participants.in(:results).size).to eq 1
+        expect(@task.task_participants.in(:results).first.participant).to eq @alice
       end
     end
   end

@@ -290,7 +290,24 @@ Instead of using the standard [JSON coder](https://api.rubyonrails.org/v4.2/clas
 
 If the original database record was deleted between the time the hash was serialised and when it was retrieved, the `GlobalID::Locator` will fail.  With ActiveJob, this means that the job cannot run and is discarded.  For Operations, we attempt to deserialise a second time, returning the GlobalID string instead of the model.  So be aware that when you access `data` or `results` you may receive a string (similar to `"gid://test-app/User/1"`) instead of the models you were expecting.  And the error handling deserialiser is very simple so you may get format changes in some of the data as well.  If serialisation fails you can access the original JSON string as `data.raw_data` or `results[:raw_data]`.  
 
-TODO: Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
+#### Indexing data and results
+
+If you need to search through existing tasks by a model that is stored in the `data` or `results` fields - for example, you might want to list all operations that were started by a particular `User` - the models can be indexed alongside the task.  
+
+If your ActiveRecord model (in this example, `User`) includes the `Operations::Participant` module, it will be linked with any task that references that model.  A polymorphic join table, `operations_task_participants` is used for this.  Whenever a task is saved, any `Operations::Participant` records are located in the `data` and `results` collections and a `Operations::TaskParticipant` record created to join the model to the task.  The `context` attribute records whether the association is in the `data` or `results` collection and the `role` attribute is the name of the hash key.  
+
+For example, you create your task as:
+```ruby
+@alice = User.find 123
+@task = DoSomethingImportant.call user: @alice 
+```
+There will not be a `TaskParticipant` record with a `context` of "data", `role` of "user" and `participant` of `@alice`.  
+
+Likewise, you can see all the tasks that Alice was involved with using: 
+```ruby
+@alice.involved_in_operations_as("user") # => collection of tasks where Alice was a "user" in the "data" collection
+@alice.involved_in_operations_as("user", context: "results") # => collection of tasks where Alice was a "user" in the "results" collection
+```
 
 ### Failures and exceptions
 If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
@@ -626,12 +643,8 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Simplify calling sub-tasks (and testing them)
 - [ ] Figure out how to stub calling sub-tasks with known results data 
 - [ ] Figure out how to test the parameters passed to sub-tasks when they are called
-- [ ] Split out the state-management definition stuff from the task class (so you can use it without subclassing Operations::Task)
 - [x] Make Operations::Task work in the background using ActiveJob
 - [x] Add pause/resume capabilities (for example, when a task needs to wait for user input)
 - [x] Add wait for sub-tasks capabilities
 - [x] Add GraphViz visualization export for task flows
-- [ ] Add ActiveModel validations support for task parameters
 - [ ] Option to change background job queue and priority settings
-- [ ] Replace the ActiveJob::Arguments deserialiser with the [transporter](https://github.com/standard-procedure/plumbing/blob/main/lib/plumbing/actor/transporter.rb) from [plumbing](https://github.com/standard-procedure/plumbing)
-- [ ] Maybe? Split this out into two gems - one defining an Operation (pure ruby) and another defining the Task (using ActiveJob as part of a Rails Engine)
