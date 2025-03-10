@@ -22,7 +22,7 @@ module Operations::Task::Testing
 
   # Instead of extending DataCarrier (which no longer has go_to),
   # create a new class with similar functionality but keeps the go_to method for testing
-  class TestResultCarrier < OpenStruct
+  class TestResultCarrier < Operations::Task::DataCarrier
     def go_to(state, message = nil)
       self.next_state = state
       self.status_message = message || next_state.to_s
@@ -41,10 +41,7 @@ module Operations::Task::Testing
 
     def call(sub_task_class, **data, &result_handler)
       record_sub_task sub_task_class
-      # Return mock data for testing
-      result = {answer: 42}
-      result_handler&.call(result)
-      result
+      super
     end
 
     def start(sub_task_class, **data, &result_handler)
