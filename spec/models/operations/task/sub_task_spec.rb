@@ -67,6 +67,23 @@ module Operations
         end
       end
 
+      class ParentTaskWithFailures < Operations::Task
+        inputs :name
+        starts_with :this_will_not_work
+
+        action :this_will_not_work do
+          call FailureTask, name: name
+        end
+      end
+
+      class FailureTask < Operations::Task
+        inputs :name
+        starts_with :boom
+        action :boom do
+          fail_with "BOOM"
+        end
+      end
+
       class ParentTaskWithBackgroundSubTasks < Operations::Task
         inputs :name
         starts_with :call_sub_task
@@ -94,8 +111,12 @@ module Operations
         expect { ParentTaskWithBackgroundSubTasks.call name: "Alice" }.to have_enqueued_job(Operations::TaskRunnerJob)
       end
 
-      it "raises an error if the sub task fails" do
+      it "re-raises any errors from the sub-task" do
         expect { ParentTaskWithErrors.call name: "Alice" }.to raise_error(RuntimeError, "BOOM")
+      end
+
+      it "raises an error if the sub task fails" do
+        expect { ParentTaskWithFailures.call name: "Alice" }.to raise_error(Operations::Failure, "BOOM")
       end
     end
   end
