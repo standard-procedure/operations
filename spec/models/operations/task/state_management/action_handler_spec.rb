@@ -45,13 +45,5 @@ module Operations::Task::StateManagement
         expect(task).to be_in_progress
       end
     end
-
-    context "attempting to use runtime transitions" do
-      it "cannot call go_to in an action block" do
-        # Create a data carrier and try to call go_to on it directly to prove it doesn't exist
-        data_carrier = Operations::Task::DataCarrier.new(task: nil)
-        expect { data_carrier.go_to("any_state") }.to raise_error(NoMethodError, /undefined method `go_to'/)
-      end
-    end
   end
 end

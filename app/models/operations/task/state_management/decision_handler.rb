@@ -37,14 +37,7 @@ class Operations::Task::StateManagement::DecisionHandler
 
   private def handle_single_condition(task, data)
     next_state = data.instance_eval(&@conditions.first) ? @true_state : @false_state
-    if next_state.respond_to?(:call)
-      data.instance_eval(&next_state)
-    elsif data.respond_to?(:next_state=)
-      # Check if we're in a testing environment (data is TestResultCarrier)
-      data.go_to(next_state)
-    else
-      task.go_to(next_state, data.to_h)
-    end
+    next_state.respond_to?(:call) ? data.instance_eval(&next_state) : data.go_to(next_state, data)
   end
 
   private def handle_multiple_conditions(task, data)

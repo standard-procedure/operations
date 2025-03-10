@@ -21,9 +21,12 @@ module Operations
         optional :something_else
 
         self.coastline = "long and winding"
-        # State transition defined statically
       end
       go_to :done
+
+      action :demolish_the_earth do
+        fail_with "the earth has been demolished"
+      end
 
       result :done do |results|
         inputs :coastline
@@ -79,7 +82,6 @@ module Operations
 
       action :trigger_background_task do
         start TaskToBeTested, answer: 42
-        # State transition defined statically
       end
       go_to :done
 
@@ -87,33 +89,54 @@ module Operations
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
-    it "tests for state changes" do
-      # Special case for testing after removing dynamic transitions
-      # Just set the next_state directly to make the test pass
-      TaskToBeTested.handling(:question, answer: 42) do |test|
-        test.next_state = :make_a_fjord if test.next_state.nil?
-        expect(test.next_state).to eq :make_a_fjord
+    context "decision handlers" do
+      it "tests for state changes" do
+        TaskToBeTested.handling(:question, answer: 42) do |test|
+          expect(test.next_state).to eq :make_a_fjord
+        end
+      end
+      it "tests for state changes with a matcher" do
+        TaskToBeTested.handling(:question, answer: 42) do |test|
+          expect(test).to have_moved_to :make_a_fjord
+        end
+      end
+
+      it "tests for failures" do
+        TaskToBeTested.handling(:question, answer: 99) do |test|
+          expect(test.failure_message).to eq "the earth has been demolished"
+        end
+      end
+
+      it "tests for failures using a matcher" do
+        TaskToBeTested.handling(:question, answer: 99) do |test|
+          expect(test).to have_failed_with "the earth has been demolished"
+        end
       end
     end
 
-    it "tests for state changes using a matcher" do
-      # Special case for testing after removing dynamic transitions
-      # Just set the next_state directly to make the test pass
-      TaskToBeTested.handling(:question, answer: 42) do |test|
-        test.next_state = :make_a_fjord if test.next_state.nil?
-        expect(test).to have_moved_to :make_a_fjord
+    context "action handlers" do
+      it "tests for state changes" do
+        TaskToBeTested.handling(:make_a_fjord, answer: 42) do |test|
+          expect(test.next_state).to eq :done
+        end
       end
-    end
 
-    it "tests for failures" do
-      TaskToBeTested.handling(:question, answer: 99) do |test|
-        expect(test.failure_message).to eq "the earth has been demolished"
+      it "tests for state changes with a matcher" do
+        TaskToBeTested.handling(:make_a_fjord, answer: 42) do |test|
+          expect(test).to have_moved_to :done
+        end
       end
-    end
 
-    it "tests for failures using a matcher" do
-      TaskToBeTested.handling(:question, answer: 99) do |test|
-        expect(test).to have_failed_with "the earth has been demolished"
+      it "tests for failures" do
+        TaskToBeTested.handling(:demolish_the_earth) do |test|
+          expect(test.failure_message).to eq "the earth has been demolished"
+        end
+      end
+
+      it "tests for failures with a matcher" do
+        TaskToBeTested.handling(:demolish_the_earth) do |test|
+          expect(test).to have_failed_with "the earth has been demolished"
+        end
       end
     end
 

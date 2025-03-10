@@ -5,7 +5,7 @@ module Operations::Task::Testing
     def handling state, **data, &block
       # Create a task specifically for testing - avoid serialization issues
       task = new(state: state)
-      # Use our own test-specific data carrier that has go_to
+      # Use our own test-specific data carrier so we can examine results
       data = TestResultCarrier.new(data.merge(task: task))
 
       # Testing doesn't use the database, so handle serialization by overriding task's go_to
