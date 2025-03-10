@@ -142,6 +142,9 @@ module Operations
         ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["multi-dimensional being", "having a good time"]) do |test|
           expect(test).to have_moved_to :mice
         end
+      end
+
+      it "raises a NoDecision exception if no conditions match" do
         expect { ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["banging rocks together"]) }.to raise_error(NoDecision)
       end
     end
@@ -190,15 +193,17 @@ module Operations
       end
     end
 
-    it "tests that the parent task calls the sub task" do
-      ParentTaskToBeTested.handling(:ask_first_question, first_question: "What is the answer to life, the universe, and everything?") do |test|
-        expect(test.sub_tasks).to include AnswerQuestion
+    context "sub-tasks" do
+      it "tests that the parent task calls the sub task" do
+        ParentTaskToBeTested.handling(:ask_first_question, first_question: "What is the answer to life, the universe, and everything?") do |test|
+          expect(test.sub_tasks).to include AnswerQuestion
+        end
       end
-    end
 
-    it "tests that the parent task starts the sub task in the background" do
-      BackgroundParentTaskToBeTested.handling(:trigger_background_task) do |test|
-        expect(test.sub_tasks).to include TaskToBeTested
+      it "tests that the parent task starts the sub task in the background" do
+        BackgroundParentTaskToBeTested.handling(:trigger_background_task) do |test|
+          expect(test.sub_tasks).to include TaskToBeTested
+        end
       end
     end
   end
