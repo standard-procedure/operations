@@ -18,12 +18,12 @@ module Operations
       starts_with :stage_one
 
       action :stage_one do
-        # State transition defined statically
+        # Do something
       end
       go_to :stage_two
 
       action :stage_two do
-        # State transition defined statically
+        # Do something else
       end
       go_to :done
 

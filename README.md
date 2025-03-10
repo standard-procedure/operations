@@ -75,8 +75,7 @@ class PrepareDocumentForDownload < Operations::Task
     inputs :document
 
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-    # State transition defined statically
-  end
+end
   go_to :return_filename
 
   result :return_filename do |results|

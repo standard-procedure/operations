@@ -1,6 +1,4 @@
 class Operations::Task::DataCarrier < OpenStruct
-  # go_to method removed to enforce static state transitions
-
   def fail_with(message) = task.fail_with(message)
 
   def call(sub_task_class, **data, &result_handler) = task.call(sub_task_class, **data, &result_handler)

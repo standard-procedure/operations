@@ -39,7 +39,6 @@ module Operations::Task::StateManagement
       end
 
       it "uses the dynamic input value to determine which state to go to" do
-        # The target_state input is used to set the state transition from the do_something action
         task = ActionHandlerStaticTest.call target_state: "second_target"
         expect(task.state).to eq "second_target"
         expect(task).to be_in_progress

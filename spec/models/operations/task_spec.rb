@@ -99,9 +99,10 @@ module Operations
       class CompletedStateTest < Task
         starts_with "go"
         action "go" do
-          # State transition defined statically
+          # Do something
         end
         go_to :done
+
         result "done" do |results|
           results.hello = "world"
         end
@@ -167,7 +168,6 @@ module Operations
 
       wait_until :value_has_been_set do
         condition { WaitingTest.stop == true }
-        # State transition defined statically (for handler's internal use)
         go_to :done
       end
 
