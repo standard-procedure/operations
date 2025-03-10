@@ -2,9 +2,9 @@ module Operations::Task::Testing
   extend ActiveSupport::Concern
 
   class_methods do
-    def handling state, **data, &block
+    def handling state, background: false, **data, &block
       # Create a task specifically for testing - avoid serialization issues
-      task = new(state: state)
+      task = new(state: state, background: background)
       # Use our own test-specific data carrier so we can examine results
       data = TestResultCarrier.new(data.merge(task: task))
 

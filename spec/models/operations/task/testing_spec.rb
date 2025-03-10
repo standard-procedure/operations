@@ -104,6 +104,21 @@ module Operations
       result :dolphins
       result :mice
     end
+
+    class WaitHandlerTest < Operations::Task
+      inputs :day_of_week
+      starts_with :we_know_what_day_it_is
+
+      wait_until :we_know_what_day_it_is do
+        condition { [0, 6].include? day_of_week }
+        go_to :weekend
+        condition { [1, 2, 3, 4, 5].include? day_of_week }
+        go_to :weekday
+      end
+
+      result :weekend
+      result :weekday
+    end
     # standard:enable Lint/ConstantDefinitionInBlock
 
     context "simple decision handlers" do
@@ -146,6 +161,20 @@ module Operations
 
       it "raises a NoDecision exception if no conditions match" do
         expect { ComplexDecisionsTest.handling(:whos_the_smartest?, achievements: ["banging rocks together"]) }.to raise_error(NoDecision)
+      end
+    end
+
+    context "wait handlers" do
+      it "changes state as expected" do
+        WaitHandlerTest.handling(:we_know_what_day_it_is, day_of_week: 0, background: true) do |test|
+          expect(test).to have_moved_to :weekend
+        end
+        WaitHandlerTest.handling(:we_know_what_day_it_is, day_of_week: 1, background: true) do |test|
+          expect(test).to have_moved_to :weekday
+        end
+        WaitHandlerTest.handling(:we_know_what_day_it_is, day_of_week: nil, background: true) do |test|
+          expect(test).to have_moved_to :we_know_what_day_it_is
+        end
       end
     end
 
