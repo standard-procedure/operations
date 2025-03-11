@@ -247,7 +247,7 @@ module Operations
         freeze_time do
           task = InputTest.start salutation: "Greetings", name: "Alice"
 
-          expect(task.data[:_execution_timeout]).to eq 5.minutes.from_now
+          expect(task.data[:_execution_timeout].to_time).to eq 5.minutes.from_now
         end
       end
 

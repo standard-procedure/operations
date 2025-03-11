@@ -1,4 +1,5 @@
 require "ostruct"
+require "global_id_serialiser"
 
 module Operations
   class Error < StandardError
@@ -10,7 +11,6 @@ module Operations
   end
   require "operations/version"
   require "operations/engine"
-  require "operations/global_id_serialiser"
   require "operations/failure"
   require "operations/cannot_wait_in_foreground"
   require "operations/timeout"

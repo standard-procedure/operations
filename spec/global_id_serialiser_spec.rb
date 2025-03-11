@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Operations::GlobalIDSerialiser do
+RSpec.describe GlobalIdSerialiser do
   describe "serialising" do
     it "converts a Hash into JSON" do
       hash = {hello: "world", number: 123, active: false}
@@ -22,13 +22,13 @@ RSpec.describe Operations::GlobalIDSerialiser do
       expect(json).to include '"hello":"world"'
       expect(json).to include '"number":123'
       expect(json).to include '"active":false'
-      expect(json).to include '"user":{"_aj_globalid":"gid://test-app/User/1"}'
+      expect(json).to include '"user":"gid://test-app/User/1"'
     end
   end
 
   describe "deserialising" do
     it "converts JSON into a Hash" do
-      json = '[{"hello":"world","number":123,"active":false,"_aj_symbol_keys":["hello","number","active"]}]'
+      json = '{"hello":"world","number":123,"active":false}'
 
       data = described_class.load(json)
 
@@ -41,7 +41,7 @@ RSpec.describe Operations::GlobalIDSerialiser do
     it "replaces GlobalID strings with ActiveRecord models" do
       db = Fabrik::Database.new
       alice = db.users.create :alice, name: "Alice"
-      json = "[{\"hello\":\"world\",\"number\":123,\"active\":false,\"user\":{\"_aj_globalid\":\"#{alice.to_global_id}\"},\"_aj_symbol_keys\":[\"hello\",\"number\",\"active\",\"user\"]}]"
+      json = "{\"hello\":\"world\",\"number\":123,\"active\":false,\"user\":\"#{alice.to_global_id}\"}"
 
       data = described_class.load(json)
 
@@ -55,7 +55,7 @@ RSpec.describe Operations::GlobalIDSerialiser do
     it "handles errors" do
       db = Fabrik::Database.new
       alice = db.users.create :alice, name: "Alice"
-      json = "[{\"hello\":\"world\",\"number\":123,\"active\":false,\"user\":{\"_aj_globalid\":\"#{alice.to_global_id}\"},\"_aj_symbol_keys\":[\"hello\",\"number\",\"active\",\"user\"]}]"
+      json = "{\"hello\":\"world\",\"number\":123,\"active\":false,\"user\":\"#{alice.to_global_id}\"}"
       alice.destroy
 
       data = described_class.load(json)
@@ -64,10 +64,7 @@ RSpec.describe Operations::GlobalIDSerialiser do
       expect(data[:hello]).to eq "world"
       expect(data[:number]).to eq 123
       expect(data[:active]).to eq false
-      expect(data[:user]).to eq alice.to_global_id.to_s
-      expect(data[:exception_message]).to include "User"
-      expect(data[:exception_class]).to eq "ActiveJob::DeserializationError"
-      expect(data[:raw_data]).to eq json
+      expect(data[:user]).to be_nil
     end
   end
 end

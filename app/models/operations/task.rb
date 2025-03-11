@@ -9,8 +9,8 @@ module Operations
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
 
-    serialize :data, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
-    serialize :results, coder: Operations::GlobalIDSerialiser, type: Hash, default: {}
+    serialize :data, coder: GlobalIdSerialiser, type: Hash, default: {}
+    serialize :results, coder: GlobalIdSerialiser, type: Hash, default: {}
 
     has_many :task_participants, class_name: "Operations::TaskParticipant", dependent: :destroy
     after_save :record_participants
