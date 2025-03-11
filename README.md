@@ -48,7 +48,6 @@ class PrepareDocumentForDownload < Operations::Task
   starts_with :authorised?
 
   decision :authorised? do
-    inputs :user
     condition { user.can?(:read, data.document) }
 
     if_true :within_download_limits?
@@ -56,7 +55,6 @@ class PrepareDocumentForDownload < Operations::Task
   end
 
   decision :within_download_limits? do
-    inputs :user
     condition { user.within_download_limits? }
 
     if_true :use_filename_scrambler?
@@ -64,7 +62,6 @@ class PrepareDocumentForDownload < Operations::Task
   end
 
   decision :use_filename_scrambler? do
-    inputs :use_filename_scrambler
     condition { use_filename_scrambler }
 
     if_true :scramble_filename
@@ -72,16 +69,11 @@ class PrepareDocumentForDownload < Operations::Task
   end
 
   action :scramble_filename do
-    inputs :document
-
     self.filename = "#{Faker::Lorem.word}#{File.extname(document.filename.to_s)}"
-end
+  end
   go_to :return_filename
 
   result :return_filename do |results|
-    inputs :document
-    optional :filename
-
     results.filename = filename || document.filename.to_s
   end
 end
@@ -158,15 +150,15 @@ go_to :send_invitations
 You can also specify the required and optional data for your action handler using parameters or within the block. `optional` is decorative and helps with documentation. When using the block form, ensure you call `inputs` at the start of the block so that the task fails before doing any meaningful work.
 
 ```ruby 
-action :have_a_party, inputs: [:number_of_guests], optional: [:music] do
+action :have_a_party do 
+  inputs :number_of_guests 
+  optional :music
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
   self.music ||= task.plan_a_party_playlist
 end
 go_to :send_invitations
 ```
-
-Defining state transitions statically with `go_to` ensures that all transitions are known when the operation class is loaded, making the flow easier to understand and analyze. The `go_to` method will automatically associate the transition with the most recently defined action handler.
 
 ### Waiting
 Wait handlers are very similar to decision handlers but only work within [background tasks](#background-operations-and-pauses).  
@@ -280,15 +272,17 @@ task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
 task.results[:name] # => Alice Aardvark
 ```
 
-Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exception is the `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)). Note that `go_to` has been removed from the data carrier to enforce static state transitions with the `go_to` method.  
+Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exception is the `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)). 
 
 Both your task's `data` and its final `results` are stored in the database, so they can be examined later.  The `results` because that's what you're interested in, the `data` as it can be useful for debugging or auditing purposes.  
 
 They are both stored as hashes that are encoded into JSON.  
 
-Instead of using the standard [JSON coder](https://api.rubyonrails.org/v4.2/classes/ActiveModel/Serializers/JSON.html), we use a [GlobalIDSerialiser](/lib/operations/global_id_serialiser.rb).  This uses [ActiveJob::Arguments](https://guides.rubyonrails.org/active_job_basics.html#supported-types-for-arguments) to transform any models into [GlobalIDs](https://github.com/rails/globalid) before storage and convert them back to models upon retrieval.  
+Instead of using the standard [JSON coder](https://api.rubyonrails.org/v4.2/classes/ActiveModel/Serializers/JSON.html), we use a [GlobalIdSerialiser](https://github.com/standard-procedure/global_id_serialiser).  This serialises most data into standard JSON types, as you would expect, but it also takes any [GlobalID::Identification](https://github.com/rails/globalid) objects (which includes all ActiveRecord models) and converts them to a GlobalID string.  Then when the data is deserialised from the database, the GlobalID is converted back into the appropriate model.  
 
-If the original database record was deleted between the time the hash was serialised and when it was retrieved, the `GlobalID::Locator` will fail.  With ActiveJob, this means that the job cannot run and is discarded.  For Operations, we attempt to deserialise a second time, returning the GlobalID string instead of the model.  So be aware that when you access `data` or `results` you may receive a string (similar to `"gid://test-app/User/1"`) instead of the models you were expecting.  And the error handling deserialiser is very simple so you may get format changes in some of the data as well.  If serialisation fails you can access the original JSON string as `data.raw_data` or `results[:raw_data]`.  
+If the original database record was deleted between the time the hash was serialised and when it was retrieved, the `GlobalID::Locator` will fail.  In this case, the deserialised data will contain a `nil` for the value in question.  
+
+Also note that the GlobalIdSerialiser automatically converts all hash keys into symbols (unlike the standard JSON coder which uses strings).  
 
 #### Indexing data and results
 
@@ -386,15 +380,11 @@ class UserRegistration < Operations::Task
   starts_with :create_user 
   
   action :create_user do 
-    inputs :email 
-
     self.user = User.create! email: email
   end
   go_to :send_verification_email
 
   action :send_verification_email do 
-    inputs :user 
-
     UserMailer.with(user: user).verification_email.deliver_later 
   end
   go_to :verified?
@@ -405,8 +395,6 @@ class UserRegistration < Operations::Task
   end 
 
   action :notify_administrator do 
-    inputs :user 
-
     AdminMailer.with(user: user).verification_completed.deliver_later
   end
 end
@@ -424,7 +412,6 @@ class ParallelTasks < Operations::Task
   starts_with :start_sub_tasks 
   
   action :start_sub_tasks do 
-    inputs :number_of_sub_tasks
     self.sub_tasks = (1..number_of_sub_tasks).collect { |i| start LongRunningTask, number: i }
   end
   go_to :do_something_else
@@ -598,7 +585,6 @@ end
 
 The visualization includes:
 - Color-coded nodes by state type (decisions, actions, wait states, results)
-- Required and optional inputs for each state
 - Transition conditions between states with custom labels when provided
 - Special handling for custom transition blocks
 
