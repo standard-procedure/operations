@@ -295,7 +295,7 @@ For example, you create your task as:
 @alice = User.find 123
 @task = DoSomethingImportant.call user: @alice 
 ```
-There will not be a `TaskParticipant` record with a `context` of "data", `role` of "user" and `participant` of `@alice`.  
+There will be a `TaskParticipant` record with a `context` of "data", `role` of "user" and `participant` of `@alice`.  
 
 Likewise, you can see all the tasks that Alice was involved with using: 
 ```ruby
