@@ -233,6 +233,30 @@ module Operations
         expect(task.background?).to be true
       end
 
+      it "knows if it is a zombie" do
+        task = nil
+        travel_to 10.minutes.ago do
+          task = StartTest.start
+        end
+        expect(task.reload).to be_zombie
+        expect(Operations::Task.zombies).to include task
+      end
+
+      it "restarts a zombie task" do
+        task = nil
+        travel_to 10.minutes.ago do
+          task = StartTest.start
+        end
+
+        expect(task.reload).to be_zombie
+
+        freeze_time do
+          expect { task.restart! }.to have_enqueued_job(TaskRunnerJob).at(1.second.from_now)
+
+          expect(task).to_not be_zombie
+        end
+      end
+
       it "raises an ArgumentError if the required parameters are not provided" do
         expect { InputTest.start(hello: "world") }.to raise_error(ArgumentError)
       end

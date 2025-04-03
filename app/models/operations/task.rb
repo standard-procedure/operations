@@ -35,9 +35,10 @@ module Operations
     end
 
     def perform_later
-      waiting!
+      update! status: "waiting", becomes_zombie_at: Time.now + zombie_delay
       TaskRunnerJob.set(wait_until: background_delay.from_now).perform_later self
     end
+    alias_method :restart!, :perform_later
 
     def self.call(**)
       build(background: false, **).tap do |task|

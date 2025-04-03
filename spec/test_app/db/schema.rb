@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_27_161543) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_03_075414) do
   create_table "documents", force: :cascade do |t|
     t.string "filename", null: false
     t.datetime "created_at", null: false
@@ -41,6 +41,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_161543) do
     t.datetime "delete_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "becomes_zombie_at"
+    t.index ["becomes_zombie_at"], name: "index_operations_tasks_on_becomes_zombie_at"
     t.index ["delete_at"], name: "index_operations_tasks_on_delete_at"
     t.index ["type", "status"], name: "index_operations_tasks_on_type_and_status"
   end

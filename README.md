@@ -470,6 +470,16 @@ class WaitForSomething < Operations::Task
 end
 ```
 
+#### Zombie tasks
+
+There's a chance that the `Operations::TaskRunnerJob` might get lost - maybe there's a crash in some process and the job does not restart correctly.  As the process for handling background tasks relies on the task "waking up", performing the next action, then queuing up the next task-runner, if the background job does not queue as expected, the task will sit there, waiting forever.  
+
+To monitor for this, every task can be checked to see if it is a `zombie?`.  This means that the current time is more than 3 times the expected delay, compared to the `updated_at` field.  So if the `delay` is set to 1 minute and the task last woke up more than 3 minutes ago, it is classed as a zombie.  
+
+There are two ways to handle zombies.  
+- Manually; add a user interface listing your tasks with a "Restart" button.  The "Restart" button calls `restart` on the task (which internally schedules a new task runner job).
+- Automatically; set up a cron job which calls the `operations:restart_zombie_jobs` rake task.  This rake task searches for zombie jobs and calls `restart` on them.  Note that cron jobs have a minimum resolution of 1 minute so this will cause pauses in tasks with a delay measured in seconds.   Also be aware that a cron job that calls a rake task will load the entire Rails stack as a new process, so be sure that your server has sufficient memory to cope.  If you're using [SolidQueue](https://github.com/rails/solid_queue/), the job runner already sets up a separate "supervisor" process and allows you to define [recurring jobs](https://github.com/rails/solid_queue/#recurring-tasks) with a resolution of 1 second.  This may be a suitable solution, but I've not tried it yet.  
+
 ## Testing
 Because operations are intended to model long, complex, flowcharts of decisions and actions, it can be a pain coming up with the combinations of inputs to test every path through the sequence.  
 

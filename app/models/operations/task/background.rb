@@ -1,6 +1,11 @@
 module Operations::Task::Background
   extend ActiveSupport::Concern
 
+  included do
+    scope :zombies, -> { zombies_at(Time.now) }
+    scope :zombies_at, ->(time) { where(becomes_zombie_at: ..time) }
+  end
+
   class_methods do
     def delay(value) = @background_delay = value
 
@@ -17,7 +22,11 @@ module Operations::Task::Background
     def with_timeout(data) = data.merge(_execution_timeout: execution_timeout.from_now.utc)
   end
 
+  def zombie? = Time.now > (updated_at + zombie_delay)
+
   private def background_delay = self.class.background_delay
+  private def zombie_delay = background_delay * 3
+  private def zombie_time = becomes_zombie_at || Time.now
   private def execution_timeout = self.class.execution_timeout
   private def timeout_handler = self.class.timeout_handler
   private def timeout!
