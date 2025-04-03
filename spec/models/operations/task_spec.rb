@@ -257,6 +257,18 @@ module Operations
         end
       end
 
+      it "restarts all zombie tasks" do
+        travel_to 10.minutes.ago do
+          5.times { |_| StartTest.start }
+        end
+
+        expect(Operations::Task.zombies.count).to eq 5
+
+        Operations::Task.restart_zombie_tasks
+
+        expect(Operations::Task.zombies.count).to eq 0
+      end
+
       it "raises an ArgumentError if the required parameters are not provided" do
         expect { InputTest.start(hello: "world") }.to raise_error(ArgumentError)
       end

@@ -20,6 +20,8 @@ module Operations::Task::Background
     def timeout_handler = @on_timeout
 
     def with_timeout(data) = data.merge(_execution_timeout: execution_timeout.from_now.utc)
+
+    def restart_zombie_tasks = zombies.find_each { |t| t.restart! }
   end
 
   def zombie? = Time.now > (updated_at + zombie_delay)

@@ -1,4 +1,4 @@
-# desc "Explaining what the task does"
-# task :operations do
-#   # Task goes here
-# end
+desc "Restart any zombie tasks"
+task :restart_zombie_tasks do
+  Operations::Task.restart_zombie_tasks
+end
