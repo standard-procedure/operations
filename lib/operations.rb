@@ -15,5 +15,5 @@ module Operations
   require "operations/cannot_wait_in_foreground"
   require "operations/timeout"
   require "operations/no_decision"
-  require "operations/exporters/graphviz"
+  require "operations/exporters/svg"
 end

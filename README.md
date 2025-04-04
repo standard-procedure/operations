@@ -560,20 +560,17 @@ If you are using RSpec, you must `require "operations/matchers"` to make the mat
 
 ## Visualization
 
-Operations tasks can be visualized as flowcharts using the built-in GraphViz exporter. This helps you understand the flow of your operations and can be useful for documentation.
+Operations tasks can be visualized as flowcharts using the built-in SVG exporter. This helps you understand the flow of your operations and can be useful for documentation.
 
 ```ruby
-# Export a task to GraphViz
-exporter = Operations::Exporters::Graphviz.new(MyTask)
-
-# Save as PNG
-exporter.save("my_task_flow.png")
+# Export a task to SVG
+exporter = Operations::Exporters::SVG.new(MyTask)
 
 # Save as SVG
-exporter.save("my_task_flow.svg", format: :svg)
+exporter.save("my_task_flow.svg")
 
-# Get DOT format
-dot_string = exporter.to_dot
+# Get SVG content directly
+svg_string = exporter.to_svg
 ```
 
 ### Custom Condition Labels
@@ -597,8 +594,6 @@ The visualization includes:
 - Color-coded nodes by state type (decisions, actions, wait states, results)
 - Transition conditions between states with custom labels when provided
 - Special handling for custom transition blocks
-
-Note: To use the GraphViz exporter, you need to have the GraphViz tool installed on your system. On macOS, you can install it with `brew install graphviz`, on Ubuntu with `apt-get install graphviz`, and on Windows with the installer from the [GraphViz website](https://graphviz.org/download/).
 
 ## Installation
 Step 1: Add the gem to your Rails application's Gemfile:
@@ -642,5 +637,5 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Make Operations::Task work in the background using ActiveJob
 - [x] Add pause/resume capabilities (for example, when a task needs to wait for user input)
 - [x] Add wait for sub-tasks capabilities
-- [x] Add GraphViz visualization export for task flows
+- [x] Add visualization export for task flows
 - [ ] Option to change background job queue and priority settings
