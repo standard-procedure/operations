@@ -22,13 +22,13 @@ bundle exec guard
 ```
 
 ## Code Style Guidelines
-- Uses Standard Ruby (standardrb) for code formatting
+- Uses Standard Ruby (standardrb) for code formatting - `standardrb --fix` will automatically lint and fix errors, listing the violations it cannot automatically fix
 - Class naming: PascalCase, method naming: snake_case
 - Task pattern: Inherit from Operations::Task
-- Define task workflows with states (decisions, actions, results)
+- Define task workflows with states (decisions, actions, wait_until, results)
 - Specify inputs with `inputs` and optional inputs with `optional`
 - Start tasks with `starts_with :state_name`
 - Use `go_to`, `fail_with` for state transitions
 - Use `status_message` for tracking progress
-- Testing with RSpec - use `.handling` method and custom matchers
+- Testing with RSpec - use `.handling` method and custom matchers for testing individual states within a task
 - File structure: models in app/models/operations/, jobs in app/jobs/operations/
