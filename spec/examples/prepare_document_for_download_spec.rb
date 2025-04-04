@@ -89,5 +89,19 @@ module Examples
       expect(task).to be_failed
       expect(task.results[:failure_message]).to eq "download_limit_reached"
     end
+
+    # Export test to generate SVG for visualization
+    it "exports task visualization to SVG" do
+      # Create the SVG exporter for this task class
+      exporter = Operations::Exporters::SVG.new(PrepareDocumentForDownload)
+
+      # Save to the tmp directory
+      svg_path = File.join(File.dirname(__FILE__), "..", "..", "tmp", "download_diagram.svg")
+      exporter.save(svg_path)
+
+      # Verify the file was created
+      expect(File.exist?(svg_path)).to be true
+      puts "SVG exported to: #{svg_path}"
+    end
   end
 end
