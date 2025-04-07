@@ -1,4 +1,4 @@
-class Operations::Task::StateManagement::CompletionHandler
+class Operations::Task::Plan::ResultHandler
   def initialize name, inputs = [], optional = [], &handler
     @name = name.to_sym
     @required_inputs = inputs

@@ -1,4 +1,4 @@
-class Operations::Task::StateManagement::DecisionHandler
+class Operations::Task::Plan::DecisionHandler
   include Operations::Task::InputValidation
 
   def initialize name, &config

@@ -1,8 +1,8 @@
 require "rails_helper"
 
-module Operations::Task::StateManagement
+module Operations::Task::Plan
   RSpec.describe DecisionHandler, type: :model do
-    context "defined by a condition on the decision" do
+    context "defined by a boolean condition" do
       # standard:disable Lint/ConstantDefinitionInBlock
       class DecisionHandlerTest < Operations::Task
         starts_with "choose"
@@ -65,7 +65,7 @@ module Operations::Task::StateManagement
         result :value_is_c
       end
       # standard:enable Lint/ConstantDefinitionInBlock
-      #
+
       it "fails if the required input is not provided" do
         expect { MultipleDecisionHandlerTest.call }.to raise_error(ArgumentError)
       end

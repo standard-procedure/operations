@@ -1,4 +1,4 @@
-class Operations::Task::StateManagement::ActionHandler
+class Operations::Task::Plan::ActionHandler
   attr_accessor :next_state
 
   def initialize name, &action

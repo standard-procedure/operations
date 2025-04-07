@@ -1,13 +1,12 @@
 module Operations
   class Task < ApplicationRecord
-    include StateManagement
+    include Plan
     include Deletion
     include Testing
-    include Background
     include Exports
     extend InputValidation
 
-    enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
+    enum :status, in_progress: 0, completed: 100, failed: -1
 
     serialize :data, coder: GlobalIdSerialiser, type: Hash, default: {}
     serialize :results, coder: GlobalIdSerialiser, type: Hash, default: {}
@@ -21,12 +20,7 @@ module Operations
       sub_task.results
     end
 
-    def start sub_task_class, **data, &result_handler
-      sub_task_class.start(**data)
-    end
-
     def perform
-      timeout!
       in_progress!
       handler_for(state).call(self, carrier_for(data))
     rescue => ex
@@ -34,27 +28,18 @@ module Operations
       raise ex
     end
 
-    def perform_later
-      update! status: "waiting", becomes_zombie_at: Time.now + zombie_delay
-      TaskRunnerJob.set(wait_until: background_delay.from_now).perform_later self
-    end
-    alias_method :restart!, :perform_later
-
-    def self.call(**)
-      build(background: false, **).tap do |task|
-        task.perform
+    class << self
+      def call(**)
+        build(**).tap do |task|
+          task.perform
+        end
       end
-    end
-
-    def self.start(**data)
-      build(background: true, **with_timeout(data)).tap do |task|
-        task.perform_later
-      end
+      alias_method :start, :call
     end
 
     def go_to(state, data = {}, message: nil)
       update!(state: state, data: data.to_h, status_message: (message || state).to_s.truncate(240))
-      background? ? perform_later : perform
+      perform
     end
 
     def fail_with(message)
@@ -80,9 +65,9 @@ module Operations
       end
     end
 
-    def self.build(background:, **data)
+    def self.build(**data)
       validate_inputs! data
-      create!(state: initial_state, status: background ? "waiting" : "in_progress", data: data, status_message: "", background: background)
+      create!(state: initial_state, status: "in_progress", data: data, status_message: "")
     end
   end
 end

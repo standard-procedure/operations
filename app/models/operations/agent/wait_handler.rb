@@ -1,4 +1,4 @@
-class Operations::Task::StateManagement::WaitHandler
+class Operations::Agent::WaitHandler
   def initialize name, &config
     @name = name.to_sym
     @conditions = []
@@ -18,7 +18,6 @@ class Operations::Task::StateManagement::WaitHandler
   def condition_labels = @condition_labels ||= {}
 
   def call(task, data)
-    raise Operations::CannotWaitInForeground.new("#{task.class} cannot wait in the foreground", task) unless task.background?
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     next_state = (condition.nil? || @conditions.index(condition).nil?) ? task.state : @destinations[@conditions.index(condition)]
     data.go_to next_state

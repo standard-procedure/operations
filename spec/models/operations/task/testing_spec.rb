@@ -105,7 +105,7 @@ module Operations
       result :mice
     end
 
-    class WaitHandlerTest < Operations::Task
+    class WaitHandlerTest < Operations::Agent
       inputs :day_of_week
       starts_with :we_know_what_day_it_is
 

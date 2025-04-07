@@ -1,4 +1,4 @@
-module Operations::Task::StateManagement
+module Operations::Task::Plan
   extend ActiveSupport::Concern
 
   included do
@@ -15,9 +15,7 @@ module Operations::Task::StateManagement
 
     def action(name, &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, &handler)
 
-    def wait_until(name, &config) = state_handlers[name.to_sym] = WaitHandler.new(name, &config)
-
-    def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = CompletionHandler.new(name, inputs, optional, &results)
+    def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = ResultHandler.new(name, inputs, optional, &results)
 
     def go_to(state)
       # Get the most recently defined action handler

@@ -12,7 +12,6 @@ module Operations
   require "operations/version"
   require "operations/engine"
   require "operations/failure"
-  require "operations/cannot_wait_in_foreground"
   require "operations/timeout"
   require "operations/no_decision"
   require "operations/exporters/svg"

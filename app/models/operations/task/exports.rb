@@ -9,13 +9,13 @@ module Operations::Task::Exports
 
     def handler_to_h(handler)
       case handler
-      when Operations::Task::StateManagement::DecisionHandler
+      when Operations::Task::Plan::DecisionHandler
         {type: :decision, transitions: decision_transitions(handler), inputs: extract_inputs(handler), optional_inputs: extract_optional_inputs(handler)}
-      when Operations::Task::StateManagement::ActionHandler
+      when Operations::Task::Plan::ActionHandler
         {type: :action, next_state: handler.next_state, inputs: extract_inputs(handler), optional_inputs: extract_optional_inputs(handler)}
-      when Operations::Task::StateManagement::WaitHandler
+      when Operations::Agent::WaitHandler
         {type: :wait, transitions: wait_transitions(handler), inputs: extract_inputs(handler), optional_inputs: extract_optional_inputs(handler)}
-      when Operations::Task::StateManagement::CompletionHandler
+      when Operations::Task::Plan::ResultHandler
         {type: :result, inputs: extract_inputs(handler), optional_inputs: extract_optional_inputs(handler)}
       else
         {type: :unknown}

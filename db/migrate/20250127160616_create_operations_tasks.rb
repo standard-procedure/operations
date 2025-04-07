@@ -7,7 +7,7 @@ class CreateOperationsTasks < ActiveRecord::Migration[7.1]
       t.string :status_message, default: "", null: false
       t.text :data
       t.text :results
-      t.boolean :background, default: false, null: false
+      t.datetime :wakes_at, null: true, index: true
       t.datetime :delete_at, null: false, index: true
       t.timestamps
     end

@@ -1,9 +1,9 @@
-module Operations::Task::Background
+module Operations::Agent::Background
   extend ActiveSupport::Concern
 
   included do
-    scope :zombies, -> { zombies_at(Time.now) }
-    scope :zombies_at, ->(time) { where(becomes_zombie_at: ..time) }
+    scope :ready_to_wake, -> { ready_to_wake_at(Time.now) }
+    scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
   end
 
   class_methods do
@@ -13,6 +13,8 @@ module Operations::Task::Background
 
     def on_timeout(&handler) = @on_timeout = handler
 
+    def wait_until(name, &config) = state_handlers[name.to_sym] = Operations::Agent::WaitHandler.new(name, &config)
+
     def background_delay = @background_delay ||= 1.second
 
     def execution_timeout = @execution_timeout ||= 5.minutes
@@ -20,15 +22,9 @@ module Operations::Task::Background
     def timeout_handler = @on_timeout
 
     def with_timeout(data) = data.merge(_execution_timeout: execution_timeout.from_now.utc)
-
-    def restart_zombie_tasks = zombies.find_each { |t| t.restart! }
   end
 
-  def zombie? = Time.now > (updated_at + zombie_delay)
-
   private def background_delay = self.class.background_delay
-  private def zombie_delay = background_delay * 3
-  private def zombie_time = becomes_zombie_at || Time.now
   private def execution_timeout = self.class.execution_timeout
   private def timeout_handler = self.class.timeout_handler
   private def timeout!
