@@ -4,7 +4,7 @@ module Operations::Task::Testing
   class_methods do
     def handling state, background: false, **data, &block
       # Create a task specifically for testing - avoid serialization issues
-      task = new(state: state, background: background)
+      task = new(state: state)
       # Use our own test-specific data carrier so we can examine results
       data = TestResultCarrier.new(data.merge(task: task))
 
