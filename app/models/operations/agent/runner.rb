@@ -25,7 +25,7 @@ module Operations
     end
 
     private def process_timed_out_agents
-      Operations::Agents.active.timed_out.find_each do |agent|
+      Operations::Agent.active.timed_out.find_each do |agent|
         Operations::AgentTimeoutJob.perform_later(agent)
       end
     end
