@@ -7,6 +7,7 @@ module Operations
     extend InputValidation
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
+    scope :active, -> { where(status: %w[in_progress waiting]) }
 
     serialize :data, coder: GlobalIdSerialiser, type: Hash, default: {}
     serialize :results, coder: GlobalIdSerialiser, type: Hash, default: {}

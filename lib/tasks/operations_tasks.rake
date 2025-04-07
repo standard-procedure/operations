@@ -1,4 +1,4 @@
-desc "Restart any zombie tasks"
-task :restart_zombie_tasks do
-  Operations::Task.restart_zombie_tasks
+desc "Start the Agent Runner process"
+task :agent_runner do
+  Operations::Agent::Runner.start
 end

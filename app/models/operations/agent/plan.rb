@@ -1,11 +1,6 @@
 module Operations::Agent::Plan
   extend ActiveSupport::Concern
 
-  included do
-    scope :ready_to_wake, -> { ready_to_wake_at(Time.now) }
-    scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
-  end
-
   class_methods do
     def delay(value) = @background_delay = value
 
@@ -22,12 +17,13 @@ module Operations::Agent::Plan
     def timeout_handler = @on_timeout
   end
 
-  private def background_delay = self.class.background_delay
-  private def execution_timeout = self.class.execution_timeout
-  private def timeout_handler = self.class.timeout_handler
-  private def timeout!
+  def timeout!
     return unless timeout_expired?
     timeout_handler.nil? ? raise(Operations::Timeout.new("Timeout expired", self)) : timeout_handler.call
   end
+
+  private def background_delay = self.class.background_delay
+  private def execution_timeout = self.class.execution_timeout
+  private def timeout_handler = self.class.timeout_handler
   private def timeout_expired? = times_out_at.present? && times_out_at < Time.now.utc
 end
