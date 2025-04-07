@@ -3,8 +3,6 @@ class Operations::Task::DataCarrier < OpenStruct
 
   def call(sub_task_class, **data, &result_handler) = task.call(sub_task_class, **data, &result_handler)
 
-  def start(sub_task_class, **data, &result_handler) = task.start(sub_task_class, **data, &result_handler)
-
   def go_to(state, data = nil) = task.go_to state, data || self
 
   def complete(results) = task.complete(results)

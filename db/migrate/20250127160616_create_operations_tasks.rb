@@ -8,6 +8,7 @@ class CreateOperationsTasks < ActiveRecord::Migration[7.1]
       t.text :data
       t.text :results
       t.datetime :wakes_at, null: true, index: true
+      t.datetime :times_out_at, null: true, index: true
       t.datetime :delete_at, null: false, index: true
       t.timestamps
     end

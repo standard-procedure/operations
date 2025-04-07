@@ -10,6 +10,8 @@ class Operations::Task::Plan::DecisionHandler
     instance_eval(&config)
   end
 
+  def immediate? = true
+
   def condition(destination = nil, options = {}, &condition)
     @conditions << condition
     @destinations << destination if destination

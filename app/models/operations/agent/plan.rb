@@ -1,4 +1,4 @@
-module Operations::Agent::Background
+module Operations::Agent::Plan
   extend ActiveSupport::Concern
 
   included do
@@ -15,13 +15,11 @@ module Operations::Agent::Background
 
     def wait_until(name, &config) = state_handlers[name.to_sym] = Operations::Agent::WaitHandler.new(name, &config)
 
-    def background_delay = @background_delay ||= 1.second
+    def background_delay = @background_delay ||= 5.minutes
 
-    def execution_timeout = @execution_timeout ||= 5.minutes
+    def execution_timeout = @execution_timeout ||= 24.hours
 
     def timeout_handler = @on_timeout
-
-    def with_timeout(data) = data.merge(_execution_timeout: execution_timeout.from_now.utc)
   end
 
   private def background_delay = self.class.background_delay
@@ -31,5 +29,5 @@ module Operations::Agent::Background
     return unless timeout_expired?
     timeout_handler.nil? ? raise(Operations::Timeout.new("Timeout expired", self)) : timeout_handler.call
   end
-  private def timeout_expired? = data[:_execution_timeout].present? && data[:_execution_timeout] < Time.now.utc
+  private def timeout_expired? = times_out_at.present? && times_out_at < Time.now.utc
 end

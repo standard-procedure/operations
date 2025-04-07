@@ -6,6 +6,8 @@ class Operations::Task::Plan::ResultHandler
     @handler = handler
   end
 
+  def immediate? = true
+
   def call(task, data)
     results = OpenStruct.new
     data.instance_exec(results, &@handler) unless @handler.nil?

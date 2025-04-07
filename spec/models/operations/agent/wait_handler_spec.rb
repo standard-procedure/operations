@@ -6,9 +6,9 @@ RSpec.describe Operations::Agent::WaitHandler, type: :model do
   context "with a single condition" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class InternalWaitHandlerTest < Operations::Agent
-      starts_with :time_to_stop
+      starts_with :stop?
 
-      wait_until :time_to_stop do
+      wait_until :stop? do
         condition { InternalWaitHandlerTest.stop == true }
         go_to :done
       end
@@ -23,27 +23,23 @@ RSpec.describe Operations::Agent::WaitHandler, type: :model do
     end
     # standard:enable Lint/ConstantDefinitionInBlock
 
-    it "fails if the task is not in the background" do
-      expect { InternalWaitHandlerTest.call }.to raise_error(Operations::CannotWaitInForeground)
-    end
-
     it "waits if the condition is not met" do
-      task = InternalWaitHandlerTest.build background: true
       InternalWaitHandlerTest.stop = false
+      task = InternalWaitHandlerTest.start
 
-      expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+      task.perform
 
-      expect(task.reload).to be_waiting
-      expect(task.state).to eq "time_to_stop"
+      expect(task).to be_waiting
+      expect(task.state).to eq "stop?"
     end
 
     it "moves to the next state if the condition is met" do
-      task = InternalWaitHandlerTest.build background: true
       InternalWaitHandlerTest.stop = true
+      task = InternalWaitHandlerTest.start
 
-      expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+      task.perform
 
-      expect(task.reload).to be_waiting
+      expect(task).to be_completed
       expect(task.state).to eq "done"
     end
   end
@@ -75,47 +71,43 @@ context "with multiple conditions" do
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
-  it "fails if the task is not in the background" do
-    expect { MultipleWaitHandlerTest.call }.to raise_error(Operations::CannotWaitInForeground)
-  end
-
   it "waits if no conditions are met" do
-    task = MultipleWaitHandlerTest.build background: true
+    task = MultipleWaitHandlerTest.create! state: "choice_has_been_made?"
     MultipleWaitHandlerTest.value = -1
 
-    expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+    task.perform
 
-    expect(task.reload).to be_waiting
+    expect(task).to be_waiting
     expect(task.state).to eq "choice_has_been_made?"
   end
 
   it "moves to the first state if the first condition is met" do
-    task = MultipleWaitHandlerTest.build background: true
+    task = MultipleWaitHandlerTest.create! state: "choice_has_been_made?"
     MultipleWaitHandlerTest.value = 1
 
-    expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+    task.perform
 
-    expect(task.reload).to be_waiting
+    expect(task).to be_completed
     expect(task.state).to eq "value_is_1"
   end
 
   it "moves to the second state if the second condition is met" do
-    task = MultipleWaitHandlerTest.build background: true
+    task = MultipleWaitHandlerTest.create! state: "choice_has_been_made?"
     MultipleWaitHandlerTest.value = 2
 
-    expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+    task.perform
 
-    expect(task.reload).to be_waiting
+    expect(task).to be_completed
     expect(task.state).to eq "value_is_2"
   end
 
   it "moves to the third state if the third condition is met" do
-    task = MultipleWaitHandlerTest.build background: true
+    task = MultipleWaitHandlerTest.create! state: "choice_has_been_made?"
     MultipleWaitHandlerTest.value = 3
 
-    expect { Operations::TaskRunnerJob.perform_now(task) }.to have_enqueued_job(Operations::TaskRunnerJob)
+    task.perform
 
-    expect(task.reload).to be_waiting
+    expect(task).to be_completed
     expect(task.state).to eq "value_is_3"
   end
 end

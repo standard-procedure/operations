@@ -6,6 +6,8 @@ class Operations::Agent::WaitHandler
     instance_eval(&config)
   end
 
+  def immediate? = false
+
   def condition(options = {}, &condition)
     @conditions << condition
     @condition_labels ||= {}

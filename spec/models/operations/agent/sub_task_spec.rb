@@ -30,7 +30,7 @@ RSpec.describe Operations::Agent, type: :model do
       starts_with :call_sub_task
 
       action :call_sub_task do
-        self.hello_agent = start SayHelloAgent, name: name
+        self.hello_agent = call SayHelloAgent, name: name
       end
       go_to :done
 
@@ -40,12 +40,12 @@ RSpec.describe Operations::Agent, type: :model do
 
     it "starts the agent in the background" do
       agent = AgentCallsAgent.start name: "Alice"
-      expect(agent).to be_waiting
+      expect(agent).to be_completed
 
       sub_agent = agent.data[:hello_agent]
       expect(sub_agent).to be_waiting
       expect(sub_agent).to be_kind_of SayHelloAgent
-      expect(sub_agent.data[:counter]).to eq "Alice"
+      expect(sub_agent.data[:counter]).to eq 0
       expect(sub_agent.data[:name]).to eq "Alice"
     end
   end

@@ -22,13 +22,13 @@ module Operations
         end
       end
 
-      class ParentTaskWithResults < Operations::Task
+      class ParentTaskWithCall < Operations::Task
         inputs :name
         starts_with :call_sub_task
 
         action :call_sub_task do
-          results = call SayHello, name: name
-          self.greeting = results[:greeting]
+          task = call SayHello, name: name
+          self.greeting = task.results[:greeting]
         end
         go_to :done
 
@@ -90,7 +90,7 @@ module Operations
       end
 
       it "calls the sub task" do
-        task = ParentTaskWithResults.call name: "Alice"
+        task = ParentTaskWithCall.call name: "Alice"
         expect(task.results[:greeting]).to eq "Hello, Alice!"
       end
 

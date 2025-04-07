@@ -9,6 +9,8 @@ class Operations::Task::Plan::ActionHandler
     @next_state = nil
   end
 
+  def immediate? = true
+
   def call(task, data)
     data.instance_exec(&@action).tap do |result|
       data.go_to @next_state unless @next_state.nil?

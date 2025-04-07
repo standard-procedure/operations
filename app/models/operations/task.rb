@@ -6,7 +6,7 @@ module Operations
     include Exports
     extend InputValidation
 
-    enum :status, in_progress: 0, completed: 100, failed: -1
+    enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
 
     serialize :data, coder: GlobalIdSerialiser, type: Hash, default: {}
     serialize :results, coder: GlobalIdSerialiser, type: Hash, default: {}
@@ -14,10 +14,13 @@ module Operations
     has_many :task_participants, class_name: "Operations::TaskParticipant", dependent: :destroy
     after_save :record_participants
 
+    def to_s = "#{model_name.human}:#{id}"
+
     def call sub_task_class, **data, &result_handler
+      Rails.logger.info { "#{self}: call #{sub_task_class}" }
       sub_task = sub_task_class.call(**data)
       result_handler&.call(sub_task.results)
-      sub_task.results
+      sub_task
     end
 
     def perform
@@ -29,8 +32,9 @@ module Operations
     end
 
     class << self
-      def call(**)
-        build(**).tap do |task|
+      def call(**data)
+        validate_inputs! data
+        create!(state: initial_state, status: "in_progress", data: data, status_message: "").tap do |task|
           task.perform
         end
       end
@@ -38,16 +42,25 @@ module Operations
     end
 
     def go_to(state, data = {}, message: nil)
-      update!(state: state, data: data.to_h, status_message: (message || state).to_s.truncate(240))
+      record_state_transition! state: state, data: data.to_h, status_message: (message || state).to_s.truncate(240)
       perform
     end
 
     def fail_with(message)
+      Rails.logger.info { "#{self}: failed #{message}" }
       update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
       raise Operations::Failure.new(message, self)
     end
 
-    def complete(results) = update!(status: "completed", status_message: "completed", results: results.to_h)
+    def complete(results)
+      Rails.logger.info { "#{self}: completed #{results}" }
+      update!(status: "completed", status_message: "completed", results: results.to_h)
+    end
+
+    protected def record_state_transition! **params
+      Rails.logger.info { "#{self}: state transition to #{state}" }
+      update! params
+    end
 
     private def carrier_for(data) = data.is_a?(DataCarrier) ? data : DataCarrier.new(data.merge(task: self))
 
@@ -63,11 +76,6 @@ module Operations
           task_participant.update! participant: participant
         end
       end
-    end
-
-    def self.build(**data)
-      validate_inputs! data
-      create!(state: initial_state, status: "in_progress", data: data, status_message: "")
     end
   end
 end
