@@ -10,11 +10,17 @@ module Operations::Agent::Plan
 
     def wait_until(name, &config) = state_handlers[name.to_sym] = Operations::Agent::WaitHandler.new(name, &config)
 
+    def interaction(name, &implementation) = interaction_handlers[name.to_sym] = Operations::Agent::InteractionHandler.new(name, self, &implementation)
+
     def background_delay = @background_delay ||= 5.minutes
 
     def execution_timeout = @execution_timeout ||= 24.hours
 
     def timeout_handler = @on_timeout
+
+    def interaction_handlers = @interaction_handlers ||= {}
+
+    def interaction_handler_for(name) = interaction_handlers[name.to_sym]
   end
 
   def timeout!

@@ -36,6 +36,19 @@ module Operations
         expect(handler).to_not be_nil
         expect(handler).to be_kind_of Operations::Agent::WaitHandler
       end
+
+      it "defines an interaction handler" do
+        definition = Class.new(Agent) do
+          interaction :do_something do
+            # whatever
+          end.when :user_done_this?, :user_has_done_that?
+        end
+
+        handler = definition.interaction_handler_for(:do_something)
+        expect(handler).to_not be_nil
+        expect(handler).to be_kind_of Operations::Agent::InteractionHandler
+        expect(handler.legal_states).to eq [:user_done_this?, :user_has_done_that?]
+      end
     end
   end
 end

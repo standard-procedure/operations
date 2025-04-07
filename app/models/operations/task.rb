@@ -28,7 +28,7 @@ module Operations
       in_progress!
       handler_for(state).call(self, carrier_for(data))
     rescue => ex
-      update! status: "failed", status_message: ex.message.to_s.truncate(240), results: {failure_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace}
+      record_exception(ex)
       raise ex
     end
 
@@ -43,13 +43,12 @@ module Operations
     end
 
     def go_to(state, data = {}, message: nil)
-      record_state_transition! state: state, data: data.to_h, status_message: (message || state).to_s.truncate(240)
+      record_state_transition! state: state, data: data.to_h.except(:task), status_message: (message || state).to_s.truncate(240)
       perform
     end
 
     def fail_with(message)
       Rails.logger.info { "#{self}: failed #{message}" }
-      update! status: "failed", status_message: message.to_s.truncate(240), results: {failure_message: message.to_s}
       raise Operations::Failure.new(message, self)
     end
 
@@ -60,10 +59,16 @@ module Operations
 
     protected def record_state_transition! **params
       Rails.logger.info { "#{self}: state transition to #{state}" }
+      params[:data] = params[:data].to_h.except(:task)
       update! params
     end
 
     private def carrier_for(data) = data.is_a?(DataCarrier) ? data : DataCarrier.new(data.merge(task: self))
+
+    private def record_exception(ex)
+      Rails.logger.error { "Exception in #{self} - #{ex.inspect}" }
+      update!(status: "failed", status_message: ex.message.to_s.truncate(240), results: {failure_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace})
+    end
 
     private def record_participants
       record_participants_in :data, data.select { |key, value| value.is_a? Participant }

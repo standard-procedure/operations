@@ -1,8 +1,6 @@
 require "rails_helper"
 
 RSpec.describe Operations::Agent::WaitHandler, type: :model do
-  before { ActiveJob::Base.queue_adapter = :test }
-
   context "with a single condition" do
     # standard:disable Lint/ConstantDefinitionInBlock
     class InternalWaitHandlerTest < Operations::Agent

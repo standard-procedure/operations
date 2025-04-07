@@ -14,5 +14,6 @@ module Operations
   require "operations/failure"
   require "operations/timeout"
   require "operations/no_decision"
+  require "operations/invalid_state"
   require "operations/exporters/svg"
 end

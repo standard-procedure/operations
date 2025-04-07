@@ -20,7 +20,7 @@ module Operations
     private def wait
       waiting!
     rescue => ex
-      update! status: "failed", status_message: ex.message.to_s.truncate(240), results: {failure_message: ex.message, exception_class: ex.class.name, exception_backtrace: ex.backtrace}
+      record_exception(ex)
       raise ex
     end
   end
