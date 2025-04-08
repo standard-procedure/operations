@@ -56,7 +56,7 @@ RSpec.describe Operations::Agent::InteractionHandler, type: :model do
       self.ready_to_finish = true
     end.when :allow_interaction
   end
-  # standard:disable Lint/ConstantDefinitionInBlock
+  # standard:enable Lint/ConstantDefinitionInBlock
 
   it "runs within the context of the task's data carrier" do
     task = SimpleInteractionTest.start important_value: 42
