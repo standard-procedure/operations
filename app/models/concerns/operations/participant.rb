@@ -3,7 +3,7 @@ module Operations
     extend ActiveSupport::Concern
 
     included do
-      has_many :operations_task_participants, class_name: "Operations::TaskParticipant", as: :participant, dependent: :destroy
+      has_many :operations_task_participants, -> { includes(:task).order "created_at desc" }, class_name: "Operations::TaskParticipant", as: :participant, dependent: :destroy
       has_many :operations_tasks, class_name: "Operations::Task", through: :operations_task_participants, source: :task
 
       scope :involved_in_operation_as, ->(role:, context: "data") do
