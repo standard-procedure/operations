@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_07_143513) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_08_124423) do
   create_table "documents", force: :cascade do |t|
     t.string "filename", null: false
     t.datetime "created_at", null: false
@@ -25,6 +25,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_07_143513) do
     t.string "context", default: "data", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["participant_type", "participant_id", "created_at", "role", "context"], name: "idx_on_participant_type_participant_id_created_at_r_fd2889d938"
     t.index ["participant_type", "participant_id"], name: "index_operations_task_participants_on_participant"
     t.index ["task_id", "participant_type", "participant_id", "role", "context"], name: "index_operations_task_participants_on_full_identity", unique: true
     t.index ["task_id"], name: "index_operations_task_participants_on_task_id"

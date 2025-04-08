@@ -1,5 +1,7 @@
 module Operations
   class TaskParticipant < ApplicationRecord
+    scope :as, ->(role) { where(role: role) }
+    scope :context, ->(context) { where(context: context) }
     belongs_to :task
     belongs_to :participant, polymorphic: true
 
