@@ -1,6 +1,6 @@
 module Operations
   class AgentTimeoutJob < ApplicationJob
-    queue_as Rails.application.config.operations_agent_timeout_queue || :default
+    queue_as :default
 
     def perform agent
       agent.timeout!
