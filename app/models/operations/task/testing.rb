@@ -4,7 +4,7 @@ module Operations::Task::Testing
   class_methods do
     def handling state, background: false, **data, &block
       # Create a task specifically for testing - avoid serialization issues
-      task = new(state: state)
+      task = create!(state: state)
       # Use our own test-specific data carrier so we can examine results
       data = TestResultCarrier.new(data.merge(task: task))
 
@@ -15,7 +15,7 @@ module Operations::Task::Testing
         # Don't call super to avoid serialization
       end
 
-      task.data = data.to_h
+      task.data = data.to_h.except(:task)
       handler_for(state).call(task, data)
       data.completion_results.nil? ? block.call(data) : block.call(data.completion_results)
     end
