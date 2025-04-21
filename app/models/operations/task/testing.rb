@@ -15,6 +15,7 @@ module Operations::Task::Testing
         # Don't call super to avoid serialization
       end
 
+      task.data = data.to_h
       handler_for(state).call(task, data)
       data.completion_results.nil? ? block.call(data) : block.call(data.completion_results)
     end
