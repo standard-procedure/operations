@@ -24,12 +24,15 @@ module Operations::Agent::Plan
   end
 
   def timeout!
-    return unless timeout_expired?
-    timeout_handler.nil? ? raise(Operations::Timeout.new("Timeout expired", self)) : timeout_handler.call
+    call_timeout_handler if timeout_expired?
   end
 
   private def background_delay = self.class.background_delay
   private def execution_timeout = self.class.execution_timeout
   private def timeout_handler = self.class.timeout_handler
   private def timeout_expired? = times_out_at.present? && times_out_at < Time.now.utc
+  private def call_timeout_handler
+    record_state_transition!
+    timeout_handler.nil? ? raise(Operations::Timeout.new("Timeout expired", self)) : timeout_handler.call
+  end
 end

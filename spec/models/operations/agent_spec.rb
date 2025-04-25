@@ -65,6 +65,33 @@ module Operations
         expect(task.state).to eq "value_has_been_set?"
         expect(task).to be_waiting
       end
+
+      it "times out if the time out has passed" do
+        WaitingTest.stop = false
+        agent = WaitingTest.start
+
+        travel_to 15.minutes.from_now do
+          expect { agent.timeout! }.to raise_error(Operations::Timeout)
+        end
+      end
+
+      it "calls the timeout handler and restarts if the timeout has passed" do
+        WaitingTest.class_eval do
+          on_timeout do
+            WaitingTest.stop = :timeout
+          end
+        end
+
+        WaitingTest.stop = false
+        agent = WaitingTest.start
+
+        travel_to 15.minutes.from_now do
+          agent.timeout!
+
+          expect(WaitingTest.stop).to eq :timeout
+          expect(agent.times_out_at).to eq Time.now + 10.minutes
+        end
+      end
     end
 
     it "runs through all actions until it comes across a wait handler" do
