@@ -18,7 +18,7 @@ module Operations
     def to_s = "#{model_name.human}:#{id}"
 
     def call sub_task_class, **data, &result_handler
-      Rails.logger.info { "#{self}: call #{sub_task_class}" }
+      Rails.logger.debug { "#{self}: call #{sub_task_class}" }
       sub_task = sub_task_class.call(**data)
       result_handler&.call(sub_task.results)
       sub_task
@@ -26,6 +26,7 @@ module Operations
 
     def perform
       in_progress!
+      Rails.logger.debug { "#{self}: performing #{state} with #{data}" }
       handler_for(state).call(self, carrier_for(data))
     rescue => ex
       record_exception(ex)
@@ -48,17 +49,17 @@ module Operations
     end
 
     def fail_with(message)
-      Rails.logger.info { "#{self}: failed #{message}" }
+      Rails.logger.error { "#{self}: failed #{message}" }
       raise Operations::Failure.new(message, self)
     end
 
     def complete(results)
-      Rails.logger.info { "#{self}: completed #{results}" }
+      Rails.logger.debug { "#{self}: completed #{results}" }
       update!(status: "completed", status_message: "completed", results: results.to_h)
     end
 
     protected def record_state_transition! **params
-      Rails.logger.info { "#{self}: state transition to #{state}" }
+      Rails.logger.debug { "#{self}: state transition to #{state}" }
       params[:data] = params[:data].to_h.except(:task)
       update! params
     end

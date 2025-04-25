@@ -20,6 +20,7 @@ class Operations::Agent::WaitHandler
   def condition_labels = @condition_labels ||= {}
 
   def call(task, data)
+    Rails.logger.debug { "#{task}: waiting until #{@name} with #{data}" }
     condition = @conditions.find { |condition| data.instance_eval(&condition) }
     next_state = (condition.nil? || @conditions.index(condition).nil?) ? task.state : @destinations[@conditions.index(condition)]
     data.go_to next_state

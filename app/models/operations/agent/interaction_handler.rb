@@ -16,6 +16,7 @@ class Operations::Agent::InteractionHandler
   private def build_method_on klass, name, handler, implementation
     klass.define_method name.to_sym do |*args|
       raise Operations::InvalidState.new("#{klass}##{name} cannot be called in #{state}") unless handler.legal_states.include?(state.to_sym)
+      Rails.logger.debug { "#{data[:task]}: interaction #{name} with #{data}" }
       carrier_for(data).tap do |data|
         data.instance_exec(*args, &implementation)
         record_state_transition! data: data
