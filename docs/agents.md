@@ -22,7 +22,6 @@ class UserRegistration < Operations::Agent
   wait_until :user_has_registered? do 
     condition { registration_completed? }
     go_to :send_welcome_email
-    interactions :user_has_registered!
   end
 
   action :send_welcome_email do 
@@ -32,10 +31,10 @@ class UserRegistration < Operations::Agent
 
   result :done
 
-  interaction :user_has_registered! do |params|
+  interaction :register_user! do |params|
     user.update! params
     self.registration_completed? = true 
-  end
+  end.when :user_has_registered?
 
   on_timeout do 
     AdministratorMailer.with(user: user).user_did_not_complete_registration.deliver_now 
@@ -43,13 +42,13 @@ class UserRegistration < Operations::Agent
 end
 ```
 
-We define the task as normal, but inherit from `Operations::Agent` and have two new declarations - `timeout` and `frequency`.  The `timeout` defines how long the agent will live for, the `frequency` defines how often the agent will "wake up" and perform some action.  
+We define the task as normal, but inherit from `Operations::Agent` and have two new declarations - `timeout` and `frequency`.  The `timeout` defines how long the agent will live for, the `frequency` defines how often the agent will "wake up" if it is waiting.  
 
-The task has an action defined as usual but then it moves into a new type of `state` - a "wait handler".   The wait handler is the key to how an agent works and allows the agent to respond to interactions from the outside world.  In this example, whilst the agent is waiting for the user to register, it allows an interaction called `user_has_registered!`.  
+The task has an action defined as usual but then it moves into a new type of `state` - a "wait handler".   The wait handler is the key to how an agent works and allows the agent to respond to interactions from the outside world.  In this example, the agent is waiting for the user to complete their registration (which is done via an "interaction", `register_user!`).
 
 ## Starting an agent
 
-Agents are not `call`ed, instead they are `start`ed.  This returns a reference to the task and performs the initial state handler (in this example, `create_user_and_send_registration_email`).  Then it moves into a `waiting` status, where it goes to sleep until `frequency` time has passed.  
+Agents are not `call`ed, instead they are `start`ed.  This returns a reference to the task and performs its actions and decisions as normal - until it reaches a "wait_handler".  At this point, it checks the wait handler's conditions and if none are met, it moves into a `waiting` status, where it goes to sleep until `frequency` time has passed.  
 
 ```ruby
 task = UserRegistration.call email: "alice@example.com", name: "Alice Aardvark"
@@ -60,13 +59,11 @@ puts task.status # => waiting
 
 The wait handler is similar to a decision handler; it evaluates a number of conditions and if the condition is met, it moves to another state.  Unlike a decision handler, if none of the conditions are met, then the agent does not fail - instead it remains in the current state and sleeps until the `frequency` time has passed.  Once awoken it checks the conditions again or it times out.  
 
-Wait handlers also declare which interactions are permitted and these are key to how the agent responds to the outside world.  
-
 ## Interactions
 
 Interactions are ways for the agent to respond to external events.  
 
-In this example, when the user clicks the registration link in their email, we pass the agent ID, not the user ID.  The controller extracts the user from the agent, then displays the registration form.  When the form is submitted the controller calls the `user_has_registered!` interaction, passing in the `params` from the form.  completes the registration form, the controller gathers the parameters from the form and calls the `user_has_registered!` interaction on the agent.  This wakes the agent, which updates the user record, sets its internal state and immediately reevaluates the wait handler, which moves it to the `send_welcome_email` state.  
+In this example, when the user clicks the registration link in their email, we pass the agent ID, not the user ID.  The controller extracts the user from the agent, then displays the registration form.  When the form is submitted the controller calls the `register_user!` interaction, passing in the `params` from the form.  This wakes the agent, updates the user record, sets its internal state and immediately reevaluates the wait handler.  The wait handler moves the agentto the `send_welcome_email` state, which is performed immediately, and moves to `done`.  
 
 ```ruby
 class UserRegistrationController < ApplicationController
@@ -78,26 +75,38 @@ class UserRegistrationController < ApplicationController
   def update
     @user_registration = UserRegistration.find params[:id]
 
-    @user_registration.user_has_registered! params: user_registration_params
+    @user_registration.register_user! params: user_registration_params
 
     redirect_to dashboard_path
   end
 end
 ```
 
-You could define the interaction as a method on the `UserRegistration` class, but interactions have three advantages.  
+Interactions are similar to defining a method on the agent but they have three advantages.  
 
 - The interaction works within the context of the data-carrier - so the interaction has access to the internal data belonging to the agent.  
-- The interaction can only be called when the agent is in the correct state.  If `UserRegistrationController#update` was called _after_ the user has completed the registration process, the call will fail.
-- The interaction invokes the wait handler immediately.  This agent has a `frequency` of `1.minute` so only wakes up 60 times per hour.  But an interaction allows the agent to respond immediately.  
+- The interaction can, optionally, only be called when the agent is in the correct state - as can be seen by the `when` clause at the end of the interaction.  If `UserRegistrationController#update` was called _after_ the user has completed the registration process, the call will fail.
+- The interaction invokes the wait handler and any subsequent handlers immediately.  This agent has a `frequency` of `1.minute` so only wakes up 60 times per hour.  But an interaction allows the agent to respond when the user registers, not at some point in the future.  
+
+### Interactions and states
+
+Each interaction can restrict the states in which it can be called with a `when` clause: 
+
+```ruby
+  interaction :register_user! do |params|
+    user.update! params
+    self.registration_completed? = true 
+  end.when :user_has_registered?
+```
+If no `when` clause is attached then the interaction can be called in any state.  
 
 ## Task runner
 
 Agents use a separate process to wake them up, implemented as a long running `rake` task - `operations:task_runner`.  The task runner checks the current agents, looking for those which have timed out or those which are ready to wake up.  If an agent is ready to wake up, it schedules an ActiveJob to perform the wait handler and any subsequent state transitions.  If the agent has timed out, if calls the `on_timeout` handler.  
 
+## Waiting for sub-tasks to complete
 
-#### Waiting for sub-tasks to complete
-Alternatively, you may have a number of sub-tasks that you want to run in parallel then continue once they have all completed.  This allows you to spread their execution across multiple processes or even servers (depending upon how your job queue processes are configured).
+If one of your actions starts sub-tasks, you can add a `wait_handler` that waits until those sub-tasks have completed.  This allows you to spread their execution across multiple processes or even servers (depending upon how your job queue processes are configured).
 
 ```ruby
 class ParallelTasks < Operations::Task 
@@ -126,21 +135,15 @@ end
 ```
 The principle is the same as above; we store the newly created sub-tasks in our own `data` property.  As they are ActiveRecord models, they get reloaded each time `sub_tasks_completed?` is evaluated - and we check to see that they have all completed before moving on.  
 
-#### Delays and Timeouts
-When you run an operation in the background, it schedules an [ActiveJob](app/jobs/operations/task_runner_job.rb) which performs the individual state handler, scheduling a follow-up job for subsequent states.  By default, these jobs are scheduled to run after 1 second - so a five state operation will take a minimum of five seconds to complete (depending upon the backlog in your job queues).  This is to prevent a single operation from starving the job process of resources and allow other ActiveJobs the time to execute.  
+## Delays
 
-However, if you know that your `wait_until` condition may take a while you can change the default delay to something longer.  In your operations definition, declare the required delay: 
+When an agent is waiting, the task runner will periodically wake it up so it can evaluate its wait handler.  By default this happens every 5 minutes, but can be overridden by specifying the `delay`.  
 
-```ruby
-class ParallelTasks < Operations::Tasks 
-  delay 1.minute
-  ...
-end
-```
+## Timeouts
 
-Likewise, it's possible for a background task to get stuck.  In the sub-tasks example above, if one of the sub-tasks fails, waiting for them _all_ to complete will never happen.  Every operation has a default timeout of 5 minutes - if the operation has not completed or failed 5 minutes after it was initially started, it will fail with an `Operations::Timeout` exception.  
+It's possible for an agent to get stuck.  In the sub-tasks example above, if one of the sub-tasks fails, waiting for them _all_ to complete will never happen.  Every operation has a default timeout of 24 hours - if the operation has not completed or failed 24 hours after it was initially started, it will fail with an `Operations::Timeout` exception.  
 
-If you need to change this (such as the user verification example above), you can declare the timeout when defining the operation.  Long timeouts fit well with longer delays, so you're not filling the job queues with jobs that are meaninglessly evaluating your conditions.
+If you need to change this (such as the user verification example above), you can declare the timeout when defining the operation.  
 
 ```ruby
 class UserRegistration < Operations::Task 
@@ -150,7 +153,7 @@ class UserRegistration < Operations::Task
 end
 ```
 
-Instead of failing with an `Operations::Timeout` exception, you define an `on_timeout` handler for any special processing should the time-out occur.  
+Instead of failing with an `Operations::Timeout` exception, you define an `on_timeout` handler for any special processing should the time-out occur.  If a timeout handler is defined, the agent does not fail (unless an exception is raised in your timeout handler) and the timeout is reset.  
 
 ```ruby 
 class WaitForSomething < Operations::Task 
@@ -162,31 +165,3 @@ class WaitForSomething < Operations::Task
   end
 end
 ```
-
-#### Zombie tasks
-
-There's a chance that the `Operations::TaskRunnerJob` might get lost - maybe there's a crash in some process and the job does not restart correctly.  As the process for handling background tasks relies on the task "waking up", performing the next action, then queuing up the next task-runner, if the background job does not queue as expected, the task will sit there, waiting forever.  
-
-To monitor for this, every task can be checked to see if it is a `zombie?`.  This means that the current time is more than 3 times the expected delay, compared to the `updated_at` field.  So if the `delay` is set to 1 minute and the task last woke up more than 3 minutes ago, it is classed as a zombie.  
-
-There are two ways to handle zombies.  
-- Manually; add a user interface listing your tasks with a "Restart" button.  The "Restart" button calls `restart` on the task (which internally schedules a new task runner job).
-- Automatically; set up a cron job which calls the `operations:restart_zombie_tasks` rake task.  This rake task searches for zombie jobs and calls `restart` on them.  Note that cron jobs have a minimum resolution of 1 minute so this will cause pauses in tasks with a delay measured in seconds.   Also be aware that a cron job that calls a rake task will load the entire Rails stack as a new process, so be sure that your server has sufficient memory to cope.  If you're using [SolidQueue](https://github.com/rails/solid_queue/), the job runner already sets up a separate "supervisor" process and allows you to define [recurring jobs](https://github.com/rails/solid_queue/#recurring-tasks) with a resolution of 1 second.  This may be a suitable solution, but I've not tried it yet.  
-
-
-### Waiting
-Wait handlers are very similar to decision handlers but only work within [background tasks](#background-operations-and-pauses).  
-
-```ruby 
-wait_until :weather_forecast_available? do 
-  condition { weather_forecast.sunny? }
-  go_to :the_beach 
-  condition { weather_forecast.rainy? }
-  go_to :grab_an_umbrella 
-  condition { weather_forecast.snowing? }
-  go_to :build_a_snowman 
-end
-```
-
-If no conditions are met, then, unlike a decision handler, the task continues waiting in the same state.  
-
