@@ -55,6 +55,10 @@ RSpec.describe Operations::Agent::InteractionHandler, type: :model do
     interaction :mark_as_done! do
       self.ready_to_finish = true
     end.when :allow_interaction
+
+    interaction :call_me! do
+      self.called = true
+    end
   end
   # standard:enable Lint/ConstantDefinitionInBlock
 
@@ -94,5 +98,15 @@ RSpec.describe Operations::Agent::InteractionHandler, type: :model do
 
     expect(task).to be_failed
     expect(task.results[:exception_class]).to eq "Operations::InvalidState"
+  end
+
+  it "can be triggered if there are no legal states defined" do
+    task = MultiStateInteractionTest.start destination: "disallow"
+    expect(task).to be_waiting
+
+    task.call_me!
+
+    expect(task).to be_waiting
+    expect(task.data[:called]).to be true
   end
 end
