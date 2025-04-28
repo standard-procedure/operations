@@ -25,6 +25,7 @@ module Operations
     end
 
     def perform
+      return if failed?
       in_progress!
       Rails.logger.debug { "#{self}: performing #{state} with #{data}" }
       handler_for(state).call(self, carrier_for(data))
