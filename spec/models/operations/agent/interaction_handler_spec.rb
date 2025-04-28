@@ -100,7 +100,7 @@ RSpec.describe Operations::Agent::InteractionHandler, type: :model do
     expect(task.results[:exception_class]).to eq "Operations::InvalidState"
   end
 
-  it "can be triggered if there are no legal states defined" do
+  it "can be triggered in any state if there are no restrictions on legal states defined" do
     task = MultiStateInteractionTest.start destination: "disallow"
     expect(task).to be_waiting
 
