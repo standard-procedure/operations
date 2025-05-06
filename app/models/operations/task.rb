@@ -17,6 +17,8 @@ module Operations
 
     def to_s = "#{model_name.human}:#{id}"
 
+    def is?(state) = self.state.to_s == state.to_s
+
     def call sub_task_class, **data, &result_handler
       Rails.logger.debug { "#{self}: call #{sub_task_class}" }
       sub_task = sub_task_class.call(**data)

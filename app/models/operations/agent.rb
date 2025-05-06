@@ -11,7 +11,7 @@ module Operations
       handler_for(state).immediate? ? perform : wait
     end
 
-    def waiting_until?(state) = self.state.to_s == state.to_s
+    alias_method :waiting_until?, :is?
 
     protected def record_state_transition! **params
       params[:wakes_at] = Time.now.utc + background_delay
