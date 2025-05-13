@@ -20,32 +20,18 @@ module Operations
       @stopped = true
     end
 
-    def self.start
-      new.start
-    end
+    def self.start = new.start
 
-    private def process_timed_out_agents
-      Operations::Agent.active.timed_out.find_each do |agent|
-        Operations::AgentTimeoutJob.perform_later(agent)
-      end
-    end
+    private def process_timed_out_agents = Agent::FindTimeoutsJob.perform_later
 
-    private def process_waiting_agents
-      Operations::Agent.waiting.ready_to_wake.find_each do |agent|
-        Operations::AgentRunnerJob.perform_later(agent)
-      end
-    end
+    private def process_waiting_agents = Agent::WakeAgentsJob.perform_later
 
     private def register_signal_handlers
       %w[INT TERM].each do |signal|
-        trap(signal) do
-          @stopped = true
-        end
+        trap(signal) { @stopped = true }
       end
 
-      trap(:QUIT) do
-        exit!
-      end
+      trap(:QUIT) { exit! }
     end
   end
 end

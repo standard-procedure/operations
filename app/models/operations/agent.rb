@@ -11,6 +11,8 @@ module Operations
       handler_for(state).immediate? ? perform : wait
     end
 
+    def perform! = waiting? ? perform : nil
+
     alias_method :waiting_until?, :is?
 
     protected def record_state_transition! **params
