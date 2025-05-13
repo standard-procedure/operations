@@ -11,7 +11,7 @@ module Operations
       until @stopped
         process_timed_out_agents
         process_waiting_agents
-        sleep
+        sleep 30
       end
       puts "...stopping"
     end

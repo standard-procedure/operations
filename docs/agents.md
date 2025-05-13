@@ -57,7 +57,9 @@ puts task.status # => waiting
 
 ## Wait handlers
 
-The wait handler is similar to a decision handler; it evaluates a number of conditions and if the condition is met, it moves to another state.  Unlike a decision handler, if none of the conditions are met, then the agent does not fail - instead it remains in the current state and sleeps until the `frequency` time has passed.  Once awoken it checks the conditions again or it times out.  
+The wait handler is similar to a decision handler; it evaluates a number of conditions and if the condition is met, it moves to another state.  Unlike a decision handler, if none of the conditions are met, then the agent does not fail - instead it remains in the current state and sleeps until the `frequency` time has passed.  
+
+Once awoken it checks the conditions again or it times out.  
 
 ## Interactions
 
@@ -99,10 +101,6 @@ Each interaction can restrict the states in which it can be called with a `when`
   end.when :user_has_registered?
 ```
 If no `when` clause is attached then the interaction can be called in any state.  
-
-## Task runner
-
-Agents use a separate process to wake them up, implemented as a long running `rake` task - `operations:task_runner`.  The task runner checks the current agents, looking for those which have timed out or those which are ready to wake up.  If an agent is ready to wake up, it schedules an ActiveJob to perform the wait handler and any subsequent state transitions.  If the agent has timed out, if calls the `on_timeout` handler.  
 
 ## Waiting for sub-tasks to complete
 
@@ -164,4 +162,60 @@ class WaitForSomething < Operations::Task
     Notifier.send_timeout_notification
   end
 end
+```
+
+## Deployment
+
+Agents require a periodic check to ensure that any waiting agents are woken up and any timed out agents are stopped.  
+
+The checking procedure goes through the list of current, active, agents and:
+
+- if an agent is ready to wake up, it schedules an `Operations::Agent::RunnerJob` to perform the wait handler and any subsequent state transitions.  
+- if the agent has timed out, it scheduled an `Operations::Agent::TimeoutJob` to call the `on_timeout` handler.  
+
+Because the actual work is handled by ActiveJobs, it doesn't matter too much if an individual agent errors (the individual agent will retry but the overall checking will not be affected) or if the server is busy and the system gets busy (agents may be woken up late, but they will be woken up).
+
+There are two ways to do manage this period check:
+
+### Using a separate Agent Runner process
+
+You can start a separate process that runs alongside your main application.  
+
+- Add a rake task that calls `Operations::Agent::Runner.start`
+- Add an entry to your Procfile that specifies the new process - `agent: bin/rails agent:start` - and update your deployment script to ensure a single `agent` process is started or restarted on each deployment
+
+### Scheduling the jobs 
+
+The Agent Runner simply runs a loop that schedules two ActiveJobs - `Operations::Agent::WakeAgentsJob` and `Operations::Agent::FindTimeoutsJob` - then goes back to sleep.  
+
+You can schedule these jobs yourself as an alternative to keeping a long-running process on your server.  
+
+Two possible ways to do this:
+
+#### Using a cron job
+
+- Add a rake task that calls `Operations::Agent::WakeAgentsJob.perform_later` 
+- Add another rake task that calls `Operations::Agent::FindTimeoutsJob.perform_later`
+- Add cron entries to your server that call the two rake tasks
+  - the `WakeAgentsJob` should be scheduled at least every five minutes (although if all your agents have a `delay` of one hour, you could use a lower frequency; 15 or 30 minutes)
+  - the `FindTimeoutsJob` can be scheduled at around once per hour
+
+#### Using SolidQueue
+
+SolidQueue includes a recurring schedule, where you can define which jobs are scheduled automatically by the SolidQueue process.  This has the advantage of reusing the existing worker that you're already using for SolidQueue, rather than consuming more resources on your server.  
+
+Edit `config/recurring.yml` to look something like this: 
+
+```yaml
+production:
+  wake_agents:
+    class: Operations::Agent::WakeAgentsJob
+    queue: default
+    args: []
+    schedule: every 5 minutes
+  timeout_agents:
+    class: Operations::Agent::FindTimeoutsJob
+    queue: default
+    args: []
+    schedule: every hour
 ```
