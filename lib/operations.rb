@@ -9,6 +9,7 @@ module Operations
     end
     attr_reader :task
   end
+  require "operations/has_data_attributes"
   require "operations/version"
   require "operations/engine"
   require "operations/failure"

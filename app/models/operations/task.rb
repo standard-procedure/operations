@@ -4,6 +4,7 @@ module Operations
     include Deletion
     include Testing
     include Exports
+    include HasDataAttributes
     extend InputValidation
 
     enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
@@ -46,6 +47,16 @@ module Operations
         end
       end
       alias_method :start, :call
+
+      def inputs(*names)
+        super
+        data_attributes(*names)
+      end
+
+      def optional(*names)
+        super
+        data_attributes(*names)
+      end
     end
 
     def go_to(state, data = {}, message: nil)

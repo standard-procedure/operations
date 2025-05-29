@@ -158,7 +158,8 @@ module Operations
     end
 
     class InputTest < Task
-      inputs :salutation, :name
+      inputs :name
+      optional :salutation
       starts_with :generate_greeting
       result :generate_greeting do |results|
         results.name = name
@@ -240,6 +241,20 @@ module Operations
         it "raises the exception" do
           expect { ExceptionTest.call take_a_risk: "some_risky_result" }.to raise_error(ExceptionTest::MyException)
         end
+      end
+    end
+
+    describe "inputs and optionals" do
+      it "creates attributes for each mandatory input" do
+        @task = InputTest.call name: "Alice"
+
+        expect(@task.name).to eq "Alice"
+      end
+
+      it "creates attributes for each optional input" do
+        @task = InputTest.call name: "Alice", salutation: "Hello"
+
+        expect(@task.salutation).to eq "Hello"
       end
     end
 
