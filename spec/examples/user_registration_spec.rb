@@ -41,7 +41,8 @@ module Examples
 
     it "waits for the PIN to be entered" do
       registration = UserRegistrationSpec.start
-      expect(registration.state).to eq "pin_correct?"
+
+      expect(registration.is?(:pin_correct?)).to be true
     end
 
     it "carries on waiting if the wrong PIN is entered" do
@@ -49,7 +50,7 @@ module Examples
 
       registration.enter_pin "999"
 
-      expect(registration.state).to eq "pin_correct?"
+      expect(registration.is?(:pin_correct?)).to be true
     end
 
     it "does not allow registration details to be entered if it is waiting for a PIN" do
@@ -64,7 +65,7 @@ module Examples
 
       registration.enter_pin correct_pin.to_s
 
-      expect(registration.state).to eq "registration_completed?"
+      expect(registration.is?(:registration_completed?)).to be true
     end
 
     it "registers the user details" do

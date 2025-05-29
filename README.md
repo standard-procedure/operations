@@ -59,11 +59,11 @@ task = PlanAParty.call date: Date.today, friends: @friends, food_shop: @food_sho
 
 expect(task).to be_completed
 # If it's a weekday
-expect(task.state).to eq "go_to_work"
+expect(task.is?(:go_to_work)).to be true 
 # If it's Sunday
-expect(task.state).to eq "relax"
+expect(task.is?(:relaz)).to be true 
 # If it's Saturday
-expect(task.state).to eq "party!"
+expect(task.is?(:party!)).to be true 
 expect(task.results[:available_friends]).to_not be_empty
 ```
 We define the `inputs` that the task expects and its starting `state`.  
@@ -160,7 +160,7 @@ go_to :send_invitations
 
 ### Result Handlers
 
-A result handler marks the end of an operation, optionally returning some results.  You need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
+A result handler marks the end of an operation, optionally returning some results.  If you're using the results collection, you will need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
 
 ```ruby
 action :send_invitations do 
@@ -178,7 +178,7 @@ end
 ```
 After this result handler has executed, the task will then be marked as `completed?`, the task's state will be `ready_to_party` and `results[:invited_friends]` will contain an array of the people you sent invitations to.  
 
-If you don't have any meaningful results, you can omit the block on your result handler.  
+If you don't have any meaningful results, you can omit the block on your result handler.  I've found that I tend to do this instead, accessing any information I need via `data` and attributes.  
 ```ruby
 result :go_to_work
 ```
@@ -204,11 +204,11 @@ begin
 
   expect(task).to be_completed
   # If it's a weekday
-  expect(task.state).to eq "go_to_work"
+  expect(task.is?(:go_to_work)).to be true
   # If it's Sunday
-  expect(task.state).to eq "relax"
+  expect(task.is?(:relax)).to be true
   # If it's Saturday
-  expect(task.state).to eq "party!"
+  expect(task.is?(:party!)).to be true
   expect(task.results[:available_friends]).to_not be_empty
 rescue => ex 
   expect(task).to be_failed
@@ -231,23 +231,27 @@ This is provided when you `call` the operation to start it and is passed through
 
 Within handlers you can read the data directly (the implementation uses `instance_eval`/`instance_exec`).  Here the `build_name` action knows the `first_name` and `last_name` provided and adds in a new property of `name`.  
 
+Accessing the task from outside of a handler (for example in your controller) you can either access the task's `data` property.  Or if you have defined your `inputs` and `optional` fields, they will also be available as attributes on the task model itself.  
+
 ```ruby 
 class CombineNames < Operations::Task 
   inputs :first_name, :last_name 
+  optional :name
   starts_with :build_name 
+  validates :first_name, presence: true 
+  validates :last_name, presence: true
 
   action :build_name do 
     self.name = "#{first_name} #{last_name}"
     go_to :done 
   end
 
-  result :done do |results|
-    results.name = name 
-  end
+  result :done
 end
 
 task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
-task.results[:name] # => Alice Aardvark
+task.name # => Alice Aardvark - `name` is defined as `optional`, so it is available directly on the task
+task.data[:name] # => Alice Aardvark - if `name` was not included in `inputs` or `optional` we would need to access it via `data`
 ```
 
 Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exception is the `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)). 
@@ -294,16 +298,12 @@ There is an ActiveRecord migration that creates the `operations_tasks` table.  U
 When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
 
 This gives you a number of possibilities: 
-- you can access the results (or error state) of a task after it has completed
+- you can access the data and results (or error state) of a task after it has completed
 - you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "[status messages](#status-messages)" below
 - tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "[background operations](#background-operations-and-pauses)" below
 - the tasks table acts as an audit trail or activity log for your application
 
 However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer) in an initializer.  Then, run a cron job, or other scheduled task, once per day that calls `Operations::Task.delete_expired`.  This will delete any tasks whose `delete_at` time has passed.  
-
-### Status messages
-
-Documentation coming soon.  
 
 ### Sub tasks
 

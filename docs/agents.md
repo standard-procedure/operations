@@ -10,6 +10,7 @@ class UserRegistration < Operations::Agent
   frequency 1.minute
 
   inputs :email, :name
+  optional :user
   starts_with :create_user_and_send_registration_email
 
   action :create_user do 
@@ -71,7 +72,7 @@ In this example, when the user clicks the registration link in their email, we p
 class UserRegistrationController < ApplicationController
   def edit 
     @user_registration = UserRegistration.find params[:id]
-    @user = @user_registration.data[:user]
+    @user = @user_registration.user
   end 
 
   def update
