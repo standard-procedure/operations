@@ -19,6 +19,8 @@ module Operations
 
     def is?(state) = self.state.to_s == state.to_s
 
+    def active? = in_progress? || waiting?
+
     def call sub_task_class, **data, &result_handler
       Rails.logger.debug { "#{self}: call #{sub_task_class}" }
       sub_task = sub_task_class.call(**data)
