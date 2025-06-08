@@ -1,7 +1,6 @@
 module Operations
   class Agent::Runner
     def initialize
-      Rails.application.eager_load! # Ensure all sub-classes are loaded in dev mode
       @stopped = false
     end
 
@@ -13,6 +12,7 @@ module Operations
         process_timed_out_agents
         process_waiting_agents
         sleep 1
+        Rails.application.eager_load! if Rails.env.development? # Ensure all sub-classes are loaded in dev mode
       end
       puts "...stopping"
     end
