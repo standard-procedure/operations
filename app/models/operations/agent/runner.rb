@@ -1,6 +1,7 @@
 module Operations
   class Agent::Runner
     def initialize
+      Rails.application.eager_load! # Ensure all sub-classes are loaded in dev mode
       @stopped = false
     end
 
