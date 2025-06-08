@@ -11,7 +11,7 @@ module Operations
       until @stopped
         process_timed_out_agents
         process_waiting_agents
-        sleep 1
+        sleep 30
         Rails.application.eager_load! if Rails.env.development? # Ensure all sub-classes are loaded in dev mode
       end
       puts "...stopping"
