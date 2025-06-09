@@ -1,7 +1,8 @@
 module Operations::Task::InputValidation
   def inputs(*names) = @required_inputs = names.map(&:to_sym)
 
-  def optional(*names) = @optional_inputs = names.map(&:to_sym)
+  def optional(*names) = @optional_inputs = (optional_inputs + names.map(&:to_sym))
+  alias_method :data, :optional
 
   def optional_inputs = @optional_inputs ||= []
 
