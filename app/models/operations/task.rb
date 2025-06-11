@@ -7,9 +7,13 @@ module Operations
     include HasDataAttributes
     extend InputValidation
 
-    enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
     scope :active, -> { where(status: %w[in_progress waiting]) }
+    scope :ready_to_wake, -> { ready_to_wake_at(Time.now.utc) }
+    scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
+    scope :timed_out, -> { timed_out_at(Time.now.utc) }
+    scope :timed_out_at, ->(time) { where(times_out_at: ..time) }
 
+    enum :status, in_progress: 0, waiting: 10, completed: 100, failed: -1
     serialize :data, coder: GlobalIdSerialiser, type: Hash, default: {}
     serialize :results, coder: GlobalIdSerialiser, type: Hash, default: {}
 
@@ -38,6 +42,9 @@ module Operations
       record_exception(ex)
       raise ex
     end
+
+    # Overridden by agents
+    def perform! = perform
 
     class << self
       def call(**data)
