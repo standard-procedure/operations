@@ -1,5 +1,5 @@
 module Operations
-  class Agent::Runner
+  class Task::Runner
     def initialize
       @stopped = false
     end
@@ -9,10 +9,10 @@ module Operations
       register_signal_handlers
       puts "...signal handlers registered"
       until @stopped
-        process_timed_out_agents
-        process_waiting_agents
-        sleep 30
         Rails.application.eager_load! if Rails.env.development? # Ensure all sub-classes are loaded in dev mode
+        Task.wake_sleeping
+        Task.delete_old
+        sleep 30
       end
       puts "...stopping"
     end
@@ -22,10 +22,6 @@ module Operations
     end
 
     def self.start = new.start
-
-    private def process_timed_out_agents = Agent::FindTimeoutsJob.perform_later
-
-    private def process_waiting_agents = Agent::WakeAgentsJob.perform_later
 
     private def register_signal_handlers
       %w[INT TERM].each do |signal|

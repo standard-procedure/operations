@@ -2,12 +2,6 @@ module Operations::Task::Plan
   extend ActiveSupport::Concern
 
   included do
-    scope :ready_to_wake, -> { ready_to_wake_at(Time.current) }
-    scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
-    scope :expired, -> { expires_at(Time.current) }
-    scope :expired_at, ->(time) { where(expires_at: ..time) }
-    scope :ready_to_delete, -> { ready_to_delete_at(Time.current) }
-    scope :ready_to_delete_at, ->(time) { where(delete_at: ..time) }
     validate :current_state_is_legal
   end
 
@@ -70,7 +64,6 @@ module Operations::Task::Plan
   private def execution_timeout = self.class.execution_timeout
   private def timeout_handler = self.class.timeout_handler
   private def timeout_expired? = expires_at.present? && expires_at < Time.now.utc
-  private def call_timeout_handler = timeout_handler.nil? ? raise(Operations::Timeout.new("Timeout expired", self)) : timeout_handler.call
   private def current_state_is_legal
     errors.add :current_state, :invalid if current_state.blank? || handler_for(current_state).nil?
   end
