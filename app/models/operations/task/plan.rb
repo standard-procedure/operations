@@ -12,6 +12,10 @@ module Operations::Task::Plan
 
     def decision(name, &config) = state_handlers[name.to_s] = DecisionHandler.new(name, &config)
 
+    def wait_until(name, &config) = state_handlers[name.to_s] = WaitHandler.new(name, &config)
+
+    def interaction(name, &implementation) = interaction_handlers[name.to_s] = InteractionHandler.new(name, self, &implementation)
+
     def result(name) = state_handlers[name.to_s] = ResultHandler.new(name)
 
     def go_to(state)
@@ -24,10 +28,29 @@ module Operations::Task::Plan
 
     def initial_state = @initial_state || "start"
 
+    def delay(value) = @background_delay = value
+
+    def timeout(value) = @execution_timeout = value
+
+    def on_timeout(&handler) = @on_timeout = handler
+
+    def background_delay = @background_delay ||= 1.minute
+
+    def execution_timeout = @execution_timeout ||= 24.hours
+
+    def timeout_handler = @on_timeout
+
     def state_handlers = @state_handlers ||= {}
 
     def handler_for(state) = state_handlers[state.to_s]
+
+    def interaction_handlers = @interaction_handlers ||= {}
+
+    def interaction_handler_for(name) = interaction_handlers[name.to_s]
   end
+
+  def is?(state) = current_state == state.to_s
+  alias_method :waiting_until?, :is?
 
   private def handler_for(state) = self.class.handler_for(state)
   private def current_state_is_legal

@@ -5,15 +5,20 @@ module Operations
     enum :task_status, active: 0, waiting: 10, completed: 100, failed: -1
     serialize :data, coder: JSON, type: Hash, default: {}
 
-    def call
+    def call(immediate: false)
       while active?
-        handler_for(current_state).call(self)
+        (handler_for(current_state).immediate? || immediate) ? handler_for(current_state).call(self) : waiting!
       end
     end
 
     def go_to next_state
       update! current_state: next_state
       Rails.logger.debug { "--- moved to #{current_state}" }
+    end
+
+    def wake_up!
+      active!
+      call(immediate: true)
     end
 
     def self.call **attributes
