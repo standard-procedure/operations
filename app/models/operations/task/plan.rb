@@ -61,8 +61,8 @@ module Operations::Task::Plan
     def default_times = {wakes_at: Time.current + background_delay, expires_at: Time.current + execution_timeout, delete_at: Time.current + deletion_time}
   end
 
-  def is?(state) = current_state == state.to_s
-  alias_method :waiting_until?, :is?
+  def in?(state) = current_state == state.to_s
+  alias_method :waiting_until?, :in?
 
   private def handler_for(state) = self.class.handler_for(state)
   private def default_times = self.class.default_times

@@ -59,10 +59,16 @@ module Examples
 
     it "does not wake up if it has expired" do
       registration = UserRegistrationExample.call email: "alice@example.com"
-
       registration.update! wakes_at: 1.minute.ago, expires_at: 1.minute.ago
 
       expect { registration.wake_up! }.to raise_error Operations::Timeout
+    end
+
+    it "runs the task in the background" do
+      registration = UserRegistrationExample.perform_later email: "alice@example.com"
+
+      expect(registration).to be_waiting
+      expect(registration).to be_in("send_invitation")
     end
   end
 end
