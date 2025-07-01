@@ -9,16 +9,17 @@ module Operations
       while active?
         handler_for(current_state).call(self)
       end
-      self
     end
 
     def go_to next_state
       update! current_state: next_state
-      puts "Moved to #{current_state}"
+      Rails.logger.debug { "--- moved to #{current_state}" }
     end
 
     def self.call **attributes
-      create!(attributes.merge(current_state: initial_state)).call
+      create!(attributes.merge(current_state: initial_state)).tap { |t| t.call }
     end
+
+    def self.perform_now(...) = call(...)
   end
 end

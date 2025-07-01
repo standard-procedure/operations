@@ -52,7 +52,7 @@ module Examples
         end
 
         it "allows `perform_now` to be used instead of `call`" do
-          task = klass.call(name: "World")
+          task = klass.perform_now(name: "World")
           expect(task).to be_completed
           expect(task.greeting).to eq "Hello World!"
         end
