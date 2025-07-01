@@ -9,12 +9,10 @@ module Operations
     end
     attr_reader :task
   end
-  require "operations/has_data_attributes"
   require "operations/version"
   require "operations/engine"
   require "operations/failure"
   require "operations/timeout"
   require "operations/no_decision"
   require "operations/invalid_state"
-  require "operations/exporters/svg"
 end
