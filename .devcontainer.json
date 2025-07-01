@@ -1,10 +1,19 @@
 {
-  "image": "ghcr.io/rails/devcontainer/images/ruby:3.3.5",
+  "image": "ghcr.io/rails/devcontainer/images/ruby:3.4.4",
   "features": {
-    "ghcr.io/rails/devcontainer/features/activestorage": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/duduribeiro/devcontainer-features/neovim:1": {
+      "version": "nightly"
     },
+    "ghcr.io/georgofenbeck/features/lazygit-linuxbinary:1": {},
+    "ghcr.io/rails/devcontainer/features/activestorage": {},
     "ghcr.io/devcontainers/features/node:1": {}
   },
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.config/nvim,target=/home/vscode/.config/nvim,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "bin/setup",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -16,7 +25,10 @@
         "miguel-savignano.ruby-symbols",
         "sibiraj-s.vscode-scss-formatter",
         "Thadeu.vscode-run-rspec-file",
-        "Cronos87.yaml-symbols"
+        "Cronos87.yaml-symbols",
+        "aliariff.vscode-erb-beautify",
+        "PascalReitermann93.vscode-yaml-sort",
+        "Anthropic.claude-code"
       ]
     }
   }

@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+require "fileutils"
+
+APP_ROOT = File.expand_path("..", __dir__)
+
+def system!(*args)
+  system(*args, exception: true)
+end
+
+FileUtils.chdir APP_ROOT do
+  puts "== Installing dependencies =="
+  system("bundle check") || system!("bundle install")
+  puts "== Load local configurations"
+  command = <<~BASH
+    bash -c 'if [ ! -f /home/vscode/.claude/settings.json ]; then 
+      mkdir -p /home/vscode/.claude && echo "{}" > /home/vscode/.claude/settings.json
+    fi'
+  BASH
+  system(command)
+  
+  # Only attempt to fix permissions if we can actually access the directories
+  # This handles macOS bind mount permission issues gracefully
+  if File.readable?("/home/vscode/.claude")
+    system("sudo chown -R vscode:vscode /home/vscode/.claude 2>/dev/null || true")
+  end
+  if File.readable?("/home/vscode/.config")  
+    system("sudo chown -R vscode:vscode /home/vscode/.config 2>/dev/null || true")
+  end
+  if File.readable?("/home/vscode/.config/nvim")
+    system("sudo chown -R vscode:vscode /home/vscode/.config/nvim 2>/dev/null || true")
+  end
+  
+  puts "\n== Preparing database =="
+  system! "bundle exec rake db:create db:test:prepare"
+
+  STDOUT.flush # flush the output before exec(2) so that it displays
+end
