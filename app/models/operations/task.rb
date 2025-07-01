@@ -28,8 +28,10 @@ module Operations
 
     def self.call(task_status: "active", **attributes) = create!(attributes.merge(task_status: task_status, current_state: initial_state).merge(default_times)).tap { |t| t.call }
 
-    def self.perform_now(**attributes) = call(**attributes)
+    def self.later(**attributes) = call(task_status: "waiting", **attributes)
 
-    def self.perform_later(**attributes) = call(task_status: "waiting", **attributes)
+    def self.perform_now(...) = call(...)
+
+    def self.perform_later(...) = later(...)
   end
 end
