@@ -1,5 +1,5 @@
 require "ostruct"
-require "global_id_serialiser"
+require "has_attributes"
 
 module Operations
   class Error < StandardError
