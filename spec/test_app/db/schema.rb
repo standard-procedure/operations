@@ -10,14 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_08_124423) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_01_190716) do
   create_table "documents", force: :cascade do |t|
     t.string "filename", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
 
-  create_table "operations_task_participants", force: :cascade do |t|
+  create_table "operations_task_participants_legacy", force: :cascade do |t|
     t.integer "task_id", null: false
     t.string "participant_type", null: false
     t.integer "participant_id", null: false
@@ -25,13 +25,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_08_124423) do
     t.string "context", default: "data", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["participant_type", "participant_id", "created_at", "role", "context"], name: "idx_on_participant_type_participant_id_created_at_r_fd2889d938"
+    t.index ["participant_type", "participant_id", "created_at", "role", "context"], name: "idx_on_participant_type_participant_id_created_at_r_a038749a30"
     t.index ["participant_type", "participant_id"], name: "index_operations_task_participants_on_participant"
     t.index ["task_id", "participant_type", "participant_id", "role", "context"], name: "index_operations_task_participants_on_full_identity", unique: true
-    t.index ["task_id"], name: "index_operations_task_participants_on_task_id"
+    t.index ["task_id"], name: "index_operations_task_participants_legacy_on_task_id"
   end
 
   create_table "operations_tasks", force: :cascade do |t|
+    t.integer "parent_id"
+    t.string "type"
+    t.integer "task_status", default: 0, null: false
+    t.string "current_state", default: "start", null: false
+    t.text "data"
+    t.datetime "wakes_at"
+    t.datetime "expires_at"
+    t.datetime "completed_at"
+    t.datetime "failed_at"
+    t.datetime "delete_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["parent_id"], name: "index_operations_tasks_on_parent_id"
+    t.index ["task_status", "delete_at"], name: "operations_task_delete_at"
+    t.index ["task_status", "wakes_at"], name: "operations_task_wakes_at"
+  end
+
+  create_table "operations_tasks_legacy", force: :cascade do |t|
     t.string "type"
     t.integer "status", default: 0, null: false
     t.string "state", null: false
@@ -44,11 +62,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_08_124423) do
     t.datetime "becomes_zombie_at"
     t.datetime "wakes_at"
     t.datetime "times_out_at"
-    t.index ["becomes_zombie_at"], name: "index_operations_tasks_on_becomes_zombie_at"
-    t.index ["delete_at"], name: "index_operations_tasks_on_delete_at"
-    t.index ["times_out_at"], name: "index_operations_tasks_on_times_out_at"
-    t.index ["type", "status"], name: "index_operations_tasks_on_type_and_status"
-    t.index ["wakes_at"], name: "index_operations_tasks_on_wakes_at"
+    t.index ["becomes_zombie_at"], name: "index_operations_tasks_legacy_on_becomes_zombie_at"
+    t.index ["delete_at"], name: "index_operations_tasks_legacy_on_delete_at"
+    t.index ["times_out_at"], name: "index_operations_tasks_legacy_on_times_out_at"
+    t.index ["type", "status"], name: "index_operations_tasks_legacy_on_type_and_status"
+    t.index ["wakes_at"], name: "index_operations_tasks_legacy_on_wakes_at"
   end
 
   create_table "users", force: :cascade do |t|
@@ -59,5 +77,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_08_124423) do
     t.datetime "updated_at", null: false
   end
 
-  add_foreign_key "operations_task_participants", "operations_tasks", column: "task_id"
+  add_foreign_key "operations_task_participants_legacy", "operations_tasks_legacy", column: "task_id"
+  add_foreign_key "operations_tasks", "operations_tasks", column: "parent_id"
 end

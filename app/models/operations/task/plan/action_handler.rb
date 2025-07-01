@@ -3,17 +3,18 @@ class Operations::Task::Plan::ActionHandler
 
   def initialize name, &action
     @name = name.to_sym
-    @required_inputs = []
-    @optional_inputs = []
     @action = action
     @next_state = nil
   end
 
+  def then next_state
+    @next_state = next_state
+  end
+
   def immediate? = true
 
-  def call(task, data)
-    data.instance_exec(&@action).tap do |result|
-      data.go_to @next_state unless @next_state.nil?
-    end
+  def call(task)
+    task.instance_exec(&@action)
+    task.go_to @next_state
   end
 end

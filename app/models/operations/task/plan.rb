@@ -2,20 +2,17 @@ module Operations::Task::Plan
   extend ActiveSupport::Concern
 
   included do
-    attribute :state, :string
-    validate :state_is_valid
+    validate :current_state_is_legal
   end
 
   class_methods do
-    def starts_with(value) = @initial_state = value.to_sym
+    def starts_with(value) = @initial_state = value.to_s
 
-    def initial_state = @initial_state
+    def action(name, &handler) = state_handlers[name.to_s] = ActionHandler.new(name, &handler)
 
-    def decision(name, &config) = state_handlers[name.to_sym] = DecisionHandler.new(name, &config)
+    def decision(name, &config) = state_handlers[name.to_s] = DecisionHandler.new(name, &config)
 
-    def action(name, &handler) = state_handlers[name.to_sym] = ActionHandler.new(name, &handler)
-
-    def result(name, inputs: [], optional: [], &results) = state_handlers[name.to_sym] = ResultHandler.new(name, inputs, optional, &results)
+    def result(name) = state_handlers[name.to_s] = ResultHandler.new(name)
 
     def go_to(state)
       # Get the most recently defined action handler
@@ -25,13 +22,15 @@ module Operations::Task::Plan
       last_action.next_state = state.to_sym
     end
 
+    def initial_state = @initial_state || "start"
+
     def state_handlers = @state_handlers ||= {}
 
-    def handler_for(state) = state_handlers[state.to_sym]
+    def handler_for(state) = state_handlers[state.to_s]
   end
 
-  private def handler_for(state) = self.class.handler_for(state.to_sym)
-  private def state_is_valid
-    errors.add :state, :invalid if state.blank? || handler_for(state.to_sym).nil?
+  private def handler_for(state) = self.class.handler_for(state)
+  private def current_state_is_legal
+    errors.add :current_state, :invalid if current_state.blank? || handler_for(current_state).nil?
   end
 end
