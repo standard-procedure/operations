@@ -17,6 +17,17 @@ module Examples
       result :done
     end
 
+    class RemovesIndexedModelTask < Operations::Task
+      has_models :documents, "Document"
+      index :documents
+
+      action :start do
+        self.documents = [documents.first]
+      end.then :done
+
+      result :done
+    end
+
     class NoIndexModelsTask < Operations::Task
       has_model :user, "User"
       validates :user, presence: true
@@ -46,6 +57,17 @@ module Examples
         expect(document.operations_as(:documents)).to include(task)
         expect(document.operations_as(:user)).to be_empty
       end
+    end
+
+    it "removes indexes for models which are no longer involved in the task" do
+      documents = (1..3).collect { |i| Document.create(filename: "#{i}.txt") }
+      task = RemovesIndexedModelTask.call documents: documents
+
+      expect(task.participants.size).to eq 1
+
+      expect(documents.first.operations).to include task
+      expect(documents.second.operations).to be_empty
+      expect(documents.third.operations).to be_empty
     end
 
     it "does not index models if none are defined" do

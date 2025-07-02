@@ -9,17 +9,14 @@ module Operations::Task::Index
 
   included do
     has_many :participants, class_name: "Operations::TaskParticipant", dependent: :destroy
-    # validate :indexed_attributes_are_legal, if: -> { indexed_attributes.any? }
-    after_save :store_participants, if: -> { indexed_attributes.any? }
+    after_save :update_index, if: -> { indexed_attributes.any? }
   end
 
   private def indexed_attributes = self.class.indexed_attributes
-  private def store_participants
-    indexed_attributes.each do |attribute|
-      models = Array.wrap(send(attribute))
-      models.each do |model|
-        participants.where(participant: model, attribute_name: attribute).first_or_create!
-      end
-    end
+  private def update_index = indexed_attributes.collect { |attribute| update_index_for(attribute) }
+  private def update_index_for(attribute)
+    models = Array.wrap(send(attribute))
+    participants.where(attribute_name: attribute).where.not(participant: models).delete_all
+    models.collect { |model| participants.where(participant: model, attribute_name: attribute).first_or_create! }
   end
 end
