@@ -72,6 +72,6 @@ RSpec.configure do |config|
   # config.filter_gems_from_backtrace("gem name")
 
   config.before(:all) do
-    `echo > #{Rails.root.join("spec", "test_app", "log", "test.log")}`
+    `echo > #{Rails.root.join("log", "test.log")}`
   end
 end
