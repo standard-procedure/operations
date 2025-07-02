@@ -10,3 +10,4 @@
 /spec/test_app/tmp/
 .DS_Store
 .mcp.json
+.claude
