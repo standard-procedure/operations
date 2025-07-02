@@ -194,99 +194,100 @@ RSpec.describe Operations::Task::Plan::WaitHandler do
     end
   end
 
-  # Cannot test these at the moment because the task loop blocks and expects another thread/process to interact with the waiting task
-  # describe "integration with task workflow" do
-  #   # standard:disable Lint/ConstantDefinitionInBlock
-  #   class WaitHandlerTestTask < Operations::Task
-  #     has_attribute :ready, :boolean, default: false
-  #     has_attribute :stage, :string
-  #     starts_with :check_readiness
+  describe "integration with task workflow" do
+    # standard:disable Lint/ConstantDefinitionInBlock
+    class WaitHandlerTestTask < Operations::Task
+      has_attribute :ready, :boolean, default: false
+      has_attribute :stage, :string
+      starts_with :check_readiness
 
-  #     wait_until :check_readiness do
-  #       condition { ready }
-  #       go_to :process
-  #     end
+      wait_until :check_readiness do
+        condition { ready }
+        go_to :process
+      end
 
-  #     action :process do
-  #       self.stage = "processed"
-  #     end.then :done
+      action :process do
+        self.stage = "processed"
+      end.then :done
 
-  #     result :done
-  #   end
+      result :done
+    end
 
-  #   class MultipleConditionsWaitTask < Operations::Task
-  #     has_attribute :score, :integer
-  #     has_attribute :approved, :boolean, default: false
-  #     has_attribute :result_message, :string
-  #     starts_with :wait_for_approval
+    class MultipleConditionsWaitTask < Operations::Task
+      has_attribute :score, :integer
+      has_attribute :approved, :boolean, default: false
+      has_attribute :result_message, :string
+      starts_with :wait_for_approval
 
-  #     wait_until :wait_for_approval do
-  #       condition(label: "high score approval") { score >= 90 && approved }
-  #       go_to :auto_approve
-  #       condition(label: "manual approval") { approved }
-  #       go_to :manual_approve
-  #       condition(label: "timeout check") { score < 50 }
-  #       go_to :reject
-  #     end
+      wait_until :wait_for_approval do
+        condition(label: "high score approval") { score >= 90 && approved }
+        go_to :auto_approve
+        condition(label: "manual approval") { approved }
+        go_to :manual_approve
+        condition(label: "timeout check") { score < 50 }
+        go_to :reject
+      end
 
-  #     action :auto_approve do
-  #       self.result_message = "Auto-approved for high score"
-  #     end.then :done
+      action :auto_approve do
+        self.result_message = "Auto-approved for high score"
+      end.then :done
 
-  #     action :manual_approve do
-  #       self.result_message = "Manually approved"
-  #     end.then :done
+      action :manual_approve do
+        self.result_message = "Manually approved"
+      end.then :done
 
-  #     action :reject do
-  #       self.result_message = "Rejected - score too low"
-  #     end.then :done
+      action :reject do
+        self.result_message = "Rejected - score too low"
+      end.then :done
 
-  #     result :done
-  #   end
-  #   # standard:enable Lint/ConstantDefinitionInBlock
+      result :done
+    end
+    # standard:enable Lint/ConstantDefinitionInBlock
 
-  #   it "waits until condition is met" do
-  #     task = WaitHandlerTestTask.call
-  #     expect(task).to be_waiting
-  #     expect(task.current_state).to eq "check_readiness"
+    # Cannot test because the task loop blocks and expects another thread/process to interact with the waiting task
+    # it "waits until condition is met" do
+    #   task = WaitHandlerTestTask.call
+    #   expect(task).to be_waiting
+    #   expect(task.current_state).to eq "check_readiness"
 
-  #     # Condition not met, task should still be waiting
-  #     task.wake_up!
-  #     expect(task).to be_waiting
+    #   # Condition not met, task should still be waiting
+    #   task.wake_up!
+    #   expect(task).to be_waiting
 
-  #     # Set condition and wake up
-  #     task.update!(ready: true)
-  #     task.wake_up!
-  #     expect(task).to be_completed
-  #     expect(task.stage).to eq "processed"
-  #   end
+    #   # Set condition and wake up
+    #   task.update!(ready: true)
+    #   task.wake_up!
+    #   expect(task).to be_completed
+    #   expect(task.stage).to eq "processed"
+    # end
 
-  #   it "works with multiple conditions and labeled conditions" do
-  #     # Test high score auto-approval
-  #     task1 = MultipleConditionsWaitTask.call(score: 95, approved: true)
-  #     task1.wake_up!
-  #     expect(task1).to be_completed
-  #     expect(task1.result_message).to eq "Auto-approved for high score"
+    it "works with multiple conditions and labeled conditions" do
+      # Test high score auto-approval
+      task1 = MultipleConditionsWaitTask.call(score: 95, approved: true)
+      task1.wake_up!
+      expect(task1).to be_completed
+      expect(task1.result_message).to eq "Auto-approved for high score"
 
-  #     # Test manual approval
-  #     task2 = MultipleConditionsWaitTask.call(score: 75, approved: true)
-  #     task2.wake_up!
-  #     expect(task2).to be_completed
-  #     expect(task2.result_message).to eq "Manually approved"
+      # Test manual approval
+      task2 = MultipleConditionsWaitTask.call(score: 75, approved: true)
+      task2.wake_up!
+      expect(task2).to be_completed
+      expect(task2.result_message).to eq "Manually approved"
 
-  #     # Test rejection
-  #     task3 = MultipleConditionsWaitTask.call(score: 40)
-  #     task3.wake_up!
-  #     expect(task3).to be_completed
-  #     expect(task3.result_message).to eq "Rejected - score too low"
-  #   end
+      # Test rejection
+      task3 = MultipleConditionsWaitTask.call(score: 40)
+      task3.wake_up!
+      expect(task3).to be_completed
+      expect(task3.result_message).to eq "Rejected - score too low"
+    end
 
-  #   it "stays in wait state when no conditions are met" do
-  #     task = MultipleConditionsWaitTask.call(score: 60, approved: false)
-  #     expect(task).to be_waiting
-  #     task.wake_up!
-  #     expect(task).to be_waiting
-  #     expect(task.current_state).to eq "wait_for_approval"
-  #   end
-  # end
+    # Cannot test because the task loop blocks and expects another thread/process to interact with the waiting task
+    # it "stays in wait state when no conditions are met" do
+    #   task = MultipleConditionsWaitTask.call(score: 60, approved: false)
+    #   expect(task).to be_waiting
+    #   task.wake_up!
+    #   expect(task).to be_waiting
+    #   expect(task.current_state).to eq "wait_for_approval"
+    # end
+  end
 end
