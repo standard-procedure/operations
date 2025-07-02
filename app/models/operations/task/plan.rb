@@ -52,7 +52,7 @@ module Operations::Task::Plan
 
     def interaction_handler_for(name) = interaction_handlers[name.to_s]
 
-    def default_times = {wakes_at: Time.current + background_delay, expires_at: Time.current + execution_timeout, delete_at: Time.current + deletion_time}
+    def default_times = {wakes_at: background_delay.from_now, expires_at: execution_timeout.from_now, delete_at: deletion_time.from_now}
   end
 
   def in?(state) = current_state == state.to_s
