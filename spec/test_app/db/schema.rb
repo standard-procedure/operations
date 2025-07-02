@@ -10,11 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_01_190716) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_02_113801) do
   create_table "documents", force: :cascade do |t|
     t.string "filename", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "operations_task_participants", force: :cascade do |t|
+    t.integer "task_id"
+    t.string "participant_type"
+    t.integer "participant_id"
+    t.string "attribute_name", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["participant_type", "participant_id"], name: "index_operations_task_participants_on_participant"
+    t.index ["task_id"], name: "index_operations_task_participants_on_task_id"
   end
 
   create_table "operations_tasks", force: :cascade do |t|
@@ -43,5 +54,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_01_190716) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "operations_task_participants", "operations_tasks", column: "task_id"
   add_foreign_key "operations_tasks", "operations_tasks", column: "parent_id"
 end

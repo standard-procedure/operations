@@ -239,7 +239,26 @@ end
 
 #### Indexing data and results
 
-(this isn't working quite yet - following the 0.7.0 rewrite)
+If your task references other ActiveRecord models, you may need to find which tasks your models were involved in.  For example, if you want to see which tasks a particular user initiated.  You can declare an `index` on any `has_model` or `has_models` definitions and the task will automatically create a polymorphic join table that can be searched.  You can then `include Operations::Participant` into your model to find which tasks it was involved in (and which attribute it was stored under).  
+
+For example: 
+
+```ruby
+class IndexesModelsTask < Operations::Task
+  has_model :user, "User"
+  validates :user, presence: true
+  has_models :documents, "Document"
+  has_attribute :count, :integer, default: 0
+  index :user, :documents
+  ... 
+end
+
+@task = IndexesModelsTask.call user: @user, documents: [@document1, @document2]
+
+@user.operations.include?(@task) # => true 
+@user.operations_as(:user).include?(@task) # => true 
+@user.operations_as(:documents).include?(@task) # => false - the user is stored in the user attribute, not the documents attribute
+```
 
 ### Failures and exceptions
 

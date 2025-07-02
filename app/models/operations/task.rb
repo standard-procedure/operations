@@ -2,6 +2,7 @@ module Operations
   class Task < ApplicationRecord
     include HasAttributes
     include Plan
+    include Index
     scope :ready_to_wake, -> { ready_to_wake_at(Time.current) }
     scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
     scope :expired, -> { expires_at(Time.current) }
@@ -36,12 +37,9 @@ module Operations
 
     def wake_up! = timeout_expired? ? call_timeout_handler : activate_and_call
 
-    def record_error!(exception) = update!(task_status: "failed", exception_class: exception.class.to_s, exception_message: exception.message.to_s, exception_backtrace: exception.backtrace)
+    def start(task_class, **attributes) = task_class.later(**attributes.merge(parent: self))
 
-    # Start a sub-task
-    def start(task_class, **attributes)
-      task_class.later(**attributes.merge(parent: self))
-    end
+    def record_error!(exception) = update!(task_status: "failed", exception_class: exception.class.to_s, exception_message: exception.message.to_s, exception_backtrace: exception.backtrace)
 
     private def go_to_sleep! = update!(default_times.merge(task_status: "waiting"))
 
