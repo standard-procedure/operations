@@ -5,5 +5,5 @@ class Operations::Task::Plan::ResultHandler
 
   def immediate? = true
 
-  def call(task) = task.completed!
+  def call(task) = task.update task_status: "completed", completed_at: Time.current
 end
