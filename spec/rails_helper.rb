@@ -72,6 +72,6 @@ RSpec.configure do |config|
   # config.filter_gems_from_backtrace("gem name")
 
   config.before(:all) do
-    FileUtils.rm(Dir.glob("**/test.log*"))
+    `echo > #{Rails.root.join("spec", "test_app", "log", "test.log")}`
   end
 end
