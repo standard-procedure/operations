@@ -1,6 +1,4 @@
 class Operations::Task::Plan::DecisionHandler
-  include Operations::Task::InputValidation
-
   def initialize name, &config
     @name = name.to_sym
     @conditions = []
