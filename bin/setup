@@ -31,7 +31,7 @@ FileUtils.chdir APP_ROOT do
   end
   
   puts "\n== Preparing database =="
-  system! "bundle exec rake db:create db:test:prepare"
+  system! "bundle exec rake db:create db:migrate db:test:prepare"
 
   STDOUT.flush # flush the output before exec(2) so that it displays
 end
