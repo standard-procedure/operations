@@ -77,13 +77,38 @@ We define the `attributes` that the task contains and its starting `state`.
 
 The initial state is `what_day_is_it?` which is a _decision_ that checks the date supplied and moves to a different state based upon the conditions defined.  `buy_food`, `buy_drinks` and `invite_friends` are _actions_ which do things.  Whereas `party!`, `relax` and `go_to_work` are _results_ which end the task.  
 
-When you `call` the task, it runs through the process immediately and either fails with an exception or completes immediately.  
+When you `call` the task, it runs through the process immediately and either fails with an exception or completes immediately.  You can test `completed?` or `failed?` and check the `current_state`.  
+
+If you prefer, `call` is alised as `perform_now`.  
 
 ### States
 
 `States` are the heart of each task.  Each `state` defines a `handler` which does something, then moves to another `state`.  
 
 You can test the current state of a task via its `current_state` attribute, or by the helper method `in? "some_state"`.  
+
+### Action Handlers
+
+An action handler does some work, and then transitions to another state. Once the action is completed, the task moves to the next state, which is specified using the `go_to` method or with a `then` declaration.  
+
+```ruby 
+action :have_a_party do
+  self.food = task.buy_some_food_for(number_of_guests)
+  self.beer = task.buy_some_beer_for(number_of_guests)
+  self.music = task.plan_a_party_playlist
+end
+go_to :send_invitations
+```
+This is the same as: 
+```ruby 
+action :have_a_party do
+  self.food = task.buy_some_food_for(number_of_guests)
+  self.beer = task.buy_some_beer_for(number_of_guests)
+  self.music = task.plan_a_party_playlist
+end.then :send_invitations
+```
+
+[Example action handler](/spec/examples/single_action_spec.rb)
 
 ### Decision Handlers
 
@@ -114,26 +139,9 @@ end
 
 If no conditions are matched then the task fails with a `NoDecision` exception.
 
-### Action Handlers
+As a convention, use a question to name your decision handlers.  
 
-An action handler does some work, and then transitions to another state. Once the action is completed, the task moves to the next state, which is specified using the `go_to` method or with a `then` declaration.  
-
-```ruby 
-action :have_a_party do
-  self.food = task.buy_some_food_for(number_of_guests)
-  self.beer = task.buy_some_beer_for(number_of_guests)
-  self.music = task.plan_a_party_playlist
-end
-go_to :send_invitations
-```
-This is the same as: 
-```ruby 
-action :have_a_party do
-  self.food = task.buy_some_food_for(number_of_guests)
-  self.beer = task.buy_some_beer_for(number_of_guests)
-  self.music = task.plan_a_party_playlist
-end.then :send_invitations
-```
+[Example decision handler](/spec/examples/conditional_action_spec.rb)
 
 ### Result Handlers
 
@@ -145,61 +153,7 @@ result :done
 
 After this result handler has executed, the task will then be marked as `completed?` and the task's `current_state` will be "done".  
 
-### Calling an operation
-
-Each task has a `call` method that takes your inputs and runs the task immediately.  You can then test to see if it has `completed?` or `failed?` and check the `current_state`.  
-
-If you prefer, `call` is alised as `perform_now`.  
-
-```ruby
-begin 
-  task = PlanAParty.call date: Date.today, friends: @friends, food_shop: @food_shop, beer_shop: @beer_shop
-
-  expect(task).to be_completed
-  # If it's a weekday
-  expect(task.in?(:go_to_work)).to be true
-  # If it's Sunday
-  expect(task.in?(:relax)).to be true
-  # If it's Saturday
-  expect(task.in?(:party!)).to be true
-  expect(task.available_friends).to_not be_empty
-rescue => ex 
-  expect(task).to be_failed
-  expect(task.exception_message).to eq ex.message
-  expect(task.exception_class).to eq ex.class
-end
-```
-
-OK - so that's a pretty longwinded way of performing a simple task.  
-
-But many operations end up as complex flows of conditionals and actions, often spread across multiple classes and objects.  This means that someone trying to understand the rules for an operation can spend a lot of time tracing through code, understanding that flow.  
-
-In [Collabor8Online](https://www.collabor8online.co.uk/), when a user wants to download a file, the task is complicated, based upon feature flags, configuration options and permissions.  This involves over fifteen decisions, fifteen actions and, previously, the logic for this was scattered across a number of models and controllers, making it extremely difficult to see what was happening.  Whereas now, all the logic for downloads is captured within one overall plan that calls out to three other sub-tasks and the logic is easy to follow.  
-
-
-#### Indexing data and results
-
-(this isn't working quite yet - following the 0.7.0 rewrite)
-
-### Failures and exceptions
-
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the details of the exception will be stored in `exception_class`, `exception_message` and `exception_backtrace`.  
-
-### Task life-cycle and the database
-
-There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails operations:install:migrations` to copy it to your application, then run `bin/rails db:migrate` to add the table to your application's database.  
-
-When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
-
-This gives you a number of possibilities: 
-- you can access the data (or error state) of a task after it has completed
-- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes
-- tasks can wait until an external event of some kind
-- the tasks table acts as an audit trail or activity log for your application
-
-However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by declaring `delete_after 7.days` - which will then mark the `delete_at` field for instances of that particular class to seven days.  To actually delete those records you should set a cron job or recurring task that calls `Operations::Task.delete_old`.  If you use the `Operations::Task::Runner`, it does this automatically.  
-
-### Background tasks and interactions
+### Waiting and interactions
 
 Many processes involve waiting for some external event to take place.  
 
@@ -212,7 +166,7 @@ class UserRegistrationExample < Operations::Task
   has_attribute :name, :string
   has_model :user, "User"
   delay 1.hour
-  timeout 24.hours
+  timeout 7.days
   starts_with :send_invitation
 
   action :send_invitation do
@@ -237,19 +191,73 @@ class UserRegistrationExample < Operations::Task
   result :done
 end
 ```
+#### Wait handlers 
 
 The registration process performs an action, `send_invitation` and then waits until a `name_provided?`.  A `wait handler` is similar to a `decision handler` but if the conditions are not met, instead of raising an error, the task goes to sleep.  A background process (see bwlow) wakes the task periodically to reevaluate the condition.  Or, an `interaction` can be triggered; this is similar to an action because it does something, but it also immediately reevaluates the current wait handler.  So in this case, when the `register!` interaction completes, the `name_provided?` wait handler is reevaluated and, because the `name` has now been supplied, it can move on to the `create_user` state.  
 
 When a task reaches a wait handler, it goes to sleep and expects to be woken up at some point in the future.  You can specify how often it is woken up by adding a `delay 10.minutes` declaration to your class.  The default is `1.minute`.  Likewise, if a task does not change state after a certain period it fails with an `Operations::Timeout` exception.  You can set this timeout by declaring `timeout 48.hours` (the default is `24.hours`).  
 
+Like decisions, use a question as the name for your wait handlers.
+
+#### Interactions 
+
 Interactions are defined with the `interaction` declaration and they always wake the task.  The handler adds a new method to the task object - so in this case you would call `@user_registration.register! "Alice"` - this would wake the task, call the `register!` interaction handler, which in turn sets the name to `Alice`.  The wait handler would then be evaluated and the "create_user" and "done" states would be executed.  Also note that the `register!` interaction can only be called when the state is `name_provided?`.  This means that, if Alice registers, then someone hacks her email and uses the same invitation again, when the `register!` method is called, it will fail with an `Operations::InvalidState` exception - because Alice has already registered, the current state is "done" meaning this interaction cannot be called. 
+
+As a convention, use an exclamation mark to name your interaction handlers.  
+
+#### Background processor 
 
 In order for `wait handlers` and `interactions` to work, you need to wake up the sleeping tasks by calling `Operations::Task.wake_sleeping`.  You can add this to a rake task that is triggered by a cron job, or if you use SolidQueue you can add it to your `recurring.yml`.  Alternatively, you can run `Operations::Task::Runner.start` - this is a long running process that wakes sleeping tasks every 30 seconds (and deletes old tasks).  
 
+#### Starting tasks in the background
+
+When a task is started, it runs in the current thread - so if you start the task within a controller, it will run in the context of your web request.  When it reaches a wait handler, the execution stops and control returns to the caller.  The background processor then uses ActiveJob to wake the task at regular intervals, evaluating the wait handler and either progressing if a condition is met or going back to sleep if the conditions are not met.  Because tasks go to sleep and the job that is processing it then ends, you should be able to create hundreds of tasks at any one time without starving your application of ActiveJob workers (although there may be delays when processing if your queues are full).
+
+If you want the task to be run completely in the background (so it sleeps immediately and then starts when the background processor wakes it), you can call `MyTask.later(...)` (which is also aliased as `perform_later`).
+
+[Example wait and interaction handlers](spec/examples/waiting_and_interactions_spec.rb)
+
 ### Sub tasks
 
-The mechanics of this are in place, as of 0.7.0 but it's not tested yet.  
+If your task needs to start sub-tasks, it can use the `start` method, passing the sub-task class and arguments.  
 
+```ruby 
+action :start_sub_tasks do 
+  3.times { |i| start OtherThingTask, number: i }
+end
+```
+Sub-tasks are always started in the background so they do not block the progress of their parent task.  You can then track those sub-tasks using the `sub_tasks`, `active_sub_tasks`, `completed_sub_tasks` and `failed_sub_tasks` associations in a wait handler.  
+
+```ruby
+wait_until :sub_tasks_have_completed? do 
+  condition { sub_tasks.all? { |st| st.completed? } }
+  go_to :all_sub_tasks_completed 
+  condition { sub_tasks.any? { |st| st.failed? } }
+  go_to :some_sub_tasks_failed
+end
+```
+
+#### Indexing data and results
+
+(this isn't working quite yet - following the 0.7.0 rewrite)
+
+### Failures and exceptions
+
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the details of the exception will be stored in `exception_class`, `exception_message` and `exception_backtrace`.  
+
+### Task life-cycle and the database
+
+There is an ActiveRecord migration that creates the `operations_tasks` table.  Use `bin/rails operations:install:migrations` to copy it to your application, then run `bin/rails db:migrate` to add the table to your application's database.  
+
+When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
+
+This gives you a number of possibilities: 
+- you can access the data (or error state) of a task after it has completed
+- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes
+- tasks can wait until an external event of some kind
+- the tasks table acts as an audit trail or activity log for your application
+
+However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by declaring `delete_after 7.days` - which will then mark the `delete_at` field for instances of that particular class to seven days.  To actually delete those records you should set a cron job or recurring task that calls `Operations::Task.delete_old`.  If you use the `Operations::Task::Runner`, it does this automatically.  
 
 ## Testing
 

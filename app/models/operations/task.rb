@@ -9,6 +9,13 @@ module Operations
     scope :ready_to_delete, -> { ready_to_delete_at(Time.current) }
     scope :ready_to_delete_at, ->(time) { where(delete_at: ..time) }
 
+    # Task hierarchy relationships
+    belongs_to :parent, class_name: "Operations::Task", optional: true
+    has_many :sub_tasks, class_name: "Operations::Task", foreign_key: "parent_id", dependent: :nullify
+    has_many :active_sub_tasks, -> { where(status: ["active", "waiting"]) }, class_name: "Operations::Task", foreign_key: "parent_id"
+    has_many :failed_sub_tasks, -> { failed }, class_name: "Operations::Task", foreign_key: "parent_id"
+    has_many :completed_sub_tasks, -> { completed }, class_name: "Operations::Task", foreign_key: "parent_id"
+
     enum :task_status, active: 0, waiting: 10, completed: 100, failed: -1
     serialize :data, coder: JSON, type: Hash, default: {}
     has_attribute :exception_class, :string
@@ -18,7 +25,7 @@ module Operations
     def call(immediate: false)
       while active?
         Rails.logger.debug { "--- #{self}: #{current_state}" }
-        (handler_for(current_state).immediate? || immediate) ? handler_for(current_state).call(self) : sleep!
+        (handler_for(current_state).immediate? || immediate) ? handler_for(current_state).call(self) : go_to_sleep!
       end
     rescue => ex
       record_error! ex
@@ -31,7 +38,12 @@ module Operations
 
     def record_error!(exception) = update!(task_status: "failed", exception_class: exception.class.to_s, exception_message: exception.message.to_s, exception_backtrace: exception.backtrace)
 
-    private def sleep! = update!(default_times.merge(task_status: "waiting"))
+    # Start a sub-task
+    def start(task_class, **attributes)
+      task_class.later(**attributes.merge(parent: self))
+    end
+
+    private def go_to_sleep! = update!(default_times.merge(task_status: "waiting"))
 
     private def activate_and_call
       active!
