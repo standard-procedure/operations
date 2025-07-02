@@ -7,6 +7,10 @@ Most times when I'm adding a feature to a complex application, I tend to end up 
 
 In effect, that flowchart is a state machine - with "decision states" and "action states".  And Operations is intended to be a way of designing your ruby class so that flowchart becomes easy to follow.  
 
+## Breaking Change
+
+Version 0.7.0 includes breaking changes.  There are migrations which rename your existing `operations_tasks` and `operations_task_participants` tables (so the data is not deleted), then a new `operations_tasks` table is created with a simplified structure.  
+
 ## Usage
 
 ### Drawing up a plan
@@ -15,7 +19,12 @@ Here's a simple example for planning a party.
 
 ```ruby
 class PlanAParty < Operations::Task
-  input :date, :friends, :food_shop, :beer_shop
+  has_attribute :date
+  validates :date, presence: true 
+  has_models :friends 
+  has_model :food_shop 
+  has_model :beer_shop
+  has_models :available_friends
   starts_with :what_day_is_it?
 
   decision :what_day_is_it? do 
@@ -42,9 +51,7 @@ class PlanAParty < Operations::Task
   end
   go_to :party!
 
-  result :party! do |results|
-    results.available_friends = available_friends
-  end
+  result :party!
   result :relax
   result :go_to_work
 end
@@ -59,26 +66,24 @@ task = PlanAParty.call date: Date.today, friends: @friends, food_shop: @food_sho
 
 expect(task).to be_completed
 # If it's a weekday
-expect(task.is?(:go_to_work)).to be true 
+expect(task).to be_in "go_to_work"
 # If it's Sunday
-expect(task.is?(:relaz)).to be true 
+expect(task).to be_in "relax"
 # If it's Saturday
-expect(task.is?(:party!)).to be true 
-expect(task.results[:available_friends]).to_not be_empty
+expect(task).to be_in "party!"
+expect(task.available_friends).to_not be_empty
 ```
-We define the `inputs` that the task expects and its starting `state`.  
+We define the `attributes` that the task contains and its starting `state`.  
 
-The initial state is `what_day_is_it?` which is a _decision_ that checks the date supplied and moves to a different state based upon the conditions defined.  `relax` and `go_to_works` are _results_ which end the task.  Whereas `buy_food`, `buy_drinks` and `invite_friends` are _actions_ which do things.  And the `party!` _result_ also returns some data - a list of `available_friends`.  
+The initial state is `what_day_is_it?` which is a _decision_ that checks the date supplied and moves to a different state based upon the conditions defined.  `buy_food`, `buy_drinks` and `invite_friends` are _actions_ which do things.  Whereas `party!`, `relax` and `go_to_work` are _results_ which end the task.  
 
 When you `call` the task, it runs through the process immediately and either fails with an exception or completes immediately.  
-
-You can also plan tasks that continue working over a period of time.  These [Agents](/docs/agents.md) have extra capabilities - `wait_until` and `interaction`s - but require a bit of setup, so we'll come back to them later.  
 
 ### States
 
 `States` are the heart of each task.  Each `state` defines a `handler` which does something, then moves to another `state`.  
 
-Any state can also declare which data it expects - both required `inputs`, as well as `optional` inputs.  If the task enters a `state` and the required data is not present then it fails with an `ArgumentError`.  Optional input declarations do not actually do anything but are useful for documenting your task.  
+You can test the current state of a task via its `current_state` attribute, or by the helper method `in? "some_state"`.  
 
 ### Decision Handlers
 
@@ -93,17 +98,6 @@ decision :is_it_the_weekend? do
   if_false :go_to_work
 end
 ```
-
-A decision can also mark a failure, which will terminate the task and raise an `Operations::Failure`.  
-```ruby
-decision :authorised? do 
-  condition { user.administrator? }
-
-  if_true :do_some_work 
-  if_false { fail_with "Unauthorised" }
-end
-```
-(In theory the block used in the `fail_with` case can do anything within the [DataCarrier context](#data-and-results) - so you could set internal state or call methods on the containing task - but I've not tried this yet).
 
 Alternatively, you can evaluate multiple conditions in your decision handler.  
 
@@ -120,21 +114,9 @@ end
 
 If no conditions are matched then the task fails with a `NoDecision` exception.
 
-You can specify the data that is required for a decision handler to run by specifying `inputs` and `optionals`:
-```ruby
-decision :authorised? do 
-  inputs :user 
-  optional :override
-  condition { override || user.administrator? }
-
-  if_true :do_some_work 
-  if_false { fail_with "Unauthorised" }
-end
-```
-
 ### Action Handlers
 
-An action handler does some work, and then transitions to another state. The state transition is defined statically after the action, using the `go_to` method.
+An action handler does some work, and then transitions to another state. Once the action is completed, the task moves to the next state, which is specified using the `go_to` method or with a `then` declaration.  
 
 ```ruby 
 action :have_a_party do
@@ -144,59 +126,30 @@ action :have_a_party do
 end
 go_to :send_invitations
 ```
-
-You can also specify the required and optional data for your action handler using parameters or within the block. 
-
+This is the same as: 
 ```ruby 
-action :have_a_party do 
-  inputs :number_of_guests 
-  optional :music
+action :have_a_party do
   self.food = task.buy_some_food_for(number_of_guests)
   self.beer = task.buy_some_beer_for(number_of_guests)
-  self.music ||= task.plan_a_party_playlist
-end
-go_to :send_invitations
+  self.music = task.plan_a_party_playlist
+end.then :send_invitations
 ```
 
 ### Result Handlers
 
-A result handler marks the end of an operation, optionally returning some results.  If you're using the results collection, you will need to copy your desired results from your [data](#data-and-results) to your results object.  This is so only the information that matters to you is stored as the results.  
+A result handler marks the end of an operation.  It's pretty simple.  
 
 ```ruby
-action :send_invitations do 
-  self.invited_friends = (0..number_of_guests).collect do |i|
-    friend = friends.pop
-    FriendsMailer.with(recipient: friend).party_invitation.deliver_later unless friend.nil?
-    friend 
-  end.compact
-end
-go_to :ready_to_party
-
-result :ready_to_party do |results|
-  results.invited_friends = invited_friends
-end
+result :done
 ```
-After this result handler has executed, the task will then be marked as `completed?`, the task's state will be `ready_to_party` and `results[:invited_friends]` will contain an array of the people you sent invitations to.  
 
-If you don't have any meaningful results, you can omit the block on your result handler.  I've found that I tend to do this instead, accessing any information I need via `data` and attributes.  
-```ruby
-result :go_to_work
-```
-In this case, the task will be marked as `completed?`, the task's state will be `go_to_work` and `results` will be empty.  
-
-You can also specify the required and optional data for your result handler within the block.  
-
-```ruby
-result :ready_to_party do |results|
-  inputs :invited_friends 
-
-  results.invited_friends = invited_friends
-end
-```
+After this result handler has executed, the task will then be marked as `completed?` and the task's `current_state` will be "done".  
 
 ### Calling an operation
 
-Each task has a `call` method that takes your inputs and runs the task immediately.  You can then test to see if it has `completed?` or `failed?` and check the final `state` and `results`
+Each task has a `call` method that takes your inputs and runs the task immediately.  You can then test to see if it has `completed?` or `failed?` and check the `current_state`.  
+
+If you prefer, `call` is alised as `perform_now`.  
 
 ```ruby
 begin 
@@ -204,16 +157,16 @@ begin
 
   expect(task).to be_completed
   # If it's a weekday
-  expect(task.is?(:go_to_work)).to be true
+  expect(task.in?(:go_to_work)).to be true
   # If it's Sunday
-  expect(task.is?(:relax)).to be true
+  expect(task.in?(:relax)).to be true
   # If it's Saturday
-  expect(task.is?(:party!)).to be true
-  expect(task.results[:available_friends]).to_not be_empty
+  expect(task.in?(:party!)).to be true
+  expect(task.available_friends).to_not be_empty
 rescue => ex 
   expect(task).to be_failed
-  expect(task.results[:exception_message]).to eq ex.message
-  expect(task.results[:exception_class]).to eq ex.class
+  expect(task.exception_message).to eq ex.message
+  expect(task.exception_class).to eq ex.class
 end
 ```
 
@@ -223,73 +176,14 @@ But many operations end up as complex flows of conditionals and actions, often s
 
 In [Collabor8Online](https://www.collabor8online.co.uk/), when a user wants to download a file, the task is complicated, based upon feature flags, configuration options and permissions.  This involves over fifteen decisions, fifteen actions and, previously, the logic for this was scattered across a number of models and controllers, making it extremely difficult to see what was happening.  Whereas now, all the logic for downloads is captured within one overall plan that calls out to three other sub-tasks and the logic is easy to follow.  
 
-### Data and results
-
-Each operation carries its own, mutable, [data](/app/models/operations/task/data_carrier.rb) for the duration of the operation.  
-
-This is provided when you `call` the operation to start it and is passed through to each decision, action and result.  If you modify the data then that modification is passed on to the next handler.  
-
-Within handlers you can read the data directly (the implementation uses `instance_eval`/`instance_exec`).  Here the `build_name` action knows the `first_name` and `last_name` provided and adds in a new property of `name`.  
-
-Accessing the task from outside of a handler (for example in your controller) you can either access the task's `data` property.  Or if you have defined your `inputs` and `optional` fields, they will also be available as attributes on the task model itself.  
-
-```ruby 
-class CombineNames < Operations::Task 
-  inputs :first_name, :last_name 
-  optional :name
-  starts_with :build_name 
-  validates :first_name, presence: true 
-  validates :last_name, presence: true
-
-  action :build_name do 
-    self.name = "#{first_name} #{last_name}"
-    go_to :done 
-  end
-
-  result :done
-end
-
-task = CombineNames.call first_name: "Alice", last_name: "Aardvark"
-task.name # => Alice Aardvark - `name` is defined as `optional`, so it is available directly on the task
-task.data[:name] # => Alice Aardvark - if `name` was not included in `inputs` or `optional` we would need to access it via `data`
-```
-
-Because handlers are run in the context of the data carrier, you do not have direct access to methods or properties on your task object.  However, the data carrier holds a reference to your task; use `task.do_something` or `task.some_attribute` to access it.  The exception is the `fail_with`, `call` and `start` methods which the data carrier understands (and are intercepted when you are [testing](#testing)). 
-
-Both your task's `data` and its final `results` are stored in the database, so they can be examined later.  The `results` because that's what you're interested in, the `data` as it can be useful for debugging or auditing purposes.  
-
-They are both stored as hashes that are encoded into JSON.  
-
-Instead of using the standard [JSON coder](https://api.rubyonrails.org/v4.2/classes/ActiveModel/Serializers/JSON.html), we use a [GlobalIdSerialiser](https://github.com/standard-procedure/global_id_serialiser).  This serialises most data into standard JSON types, as you would expect, but it also takes any [GlobalID::Identification](https://github.com/rails/globalid) objects (which includes all ActiveRecord models) and converts them to a GlobalID string.  Then when the data is deserialised from the database, the GlobalID is converted back into the appropriate model.  
-
-If the original database record was deleted between the time the hash was serialised and when it was retrieved, the `GlobalID::Locator` will fail.  In this case, the deserialised data will contain a `nil` for the value in question.  
-
-Also note that the GlobalIdSerialiser automatically converts all hash keys into symbols (unlike the standard JSON coder which uses strings).  
 
 #### Indexing data and results
 
-If you need to search through existing tasks by a model that is stored in the `data` or `results` fields - for example, you might want to list all operations that were started by a particular `User` - the models can be indexed alongside the task.  
-
-If your ActiveRecord model (in this example, `User`) includes the `Operations::Participant` module, it will be linked with any task that references that model.  A polymorphic join table, `operations_task_participants` is used for this.  Whenever a task is saved, any `Operations::Participant` records are located in the `data` and `results` collections and a `Operations::TaskParticipant` record created to join the model to the task.  The `context` attribute records whether the association is in the `data` or `results` collection and the `role` attribute is the name of the hash key.  
-
-For example, you create your task as:
-```ruby
-@alice = User.find 123
-@task = DoSomethingImportant.call user: @alice 
-```
-There will be a `TaskParticipant` record with a `context` of "data", `role` of "user" and `participant` of `@alice`.  
-
-Likewise, you can see all the tasks that Alice was involved with using: 
-```ruby
-@alice.involved_in_operations_as("user") # => collection of tasks where Alice was a "user" in the "data" collection
-@alice.involved_in_operations_as("user", context: "results") # => collection of tasks where Alice was a "user" in the "results" collection
-```
+(this isn't working quite yet - following the 0.7.0 rewrite)
 
 ### Failures and exceptions
 
-If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the `results` hash will contain `results[:failure_message]`, `results[:exception_class]` and `results[:exception_backtrace]` for the exception's message, class name and backtrace respectively.  
-
-You can also stop a task at any point by calling `fail_with message`.  This will raise an `Operations::Failure` exception, marking the task as `failed?` and the `results` has will contain `results[:failure_message]`.
+If any handlers raise an exception, the task will be terminated. It will be marked as `failed?` and the details of the exception will be stored in `exception_class`, `exception_message` and `exception_backtrace`.  
 
 ### Task life-cycle and the database
 
@@ -298,61 +192,68 @@ There is an ActiveRecord migration that creates the `operations_tasks` table.  U
 When you `call` a task, it is written to the database.  Then whenever a state transition occurs, the task record is updated.  
 
 This gives you a number of possibilities: 
-- you can access the data and results (or error state) of a task after it has completed
-- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes - see "[status messages](#status-messages)" below
-- tasks can run in the background (using ActiveJob) and other parts of your code can interact with them whilst they are in progress - see "[background operations](#background-operations-and-pauses)" below
+- you can access the data (or error state) of a task after it has completed
+- you can use [TurboStream broadcasts](https://turbo.hotwired.dev/handbook/streams) to update your user-interface as the state changes
+- tasks can wait until an external event of some kind
 - the tasks table acts as an audit trail or activity log for your application
 
-However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by calling `Operations::Task.delete_after 7.days` (or whatever value you prefer) in an initializer.  Then, run a cron job, or other scheduled task, once per day that calls `Operations::Task.delete_expired`.  This will delete any tasks whose `delete_at` time has passed.  
+However, it also means that your database table could fill up with junk that you're no longer interested in.  Therefore you can specify the maximum age of a task and, periodically, clean old tasks away.  Every task has a `delete_at` field that, by default, is set to `90.days.from_now`.  This can be changed by declaring `delete_after 7.days` - which will then mark the `delete_at` field for instances of that particular class to seven days.  To actually delete those records you should set a cron job or recurring task that calls `Operations::Task.delete_old`.  If you use the `Operations::Task::Runner`, it does this automatically.  
+
+### Background tasks and interactions
+
+Many processes involve waiting for some external event to take place.  
+
+A great example is user registration.  The administrator sends an invitation email, the recipient clicks the link, enters their details, and once completed, the user record is created.  This can be modelled as follows: 
+
+```ruby
+class UserRegistrationExample < Operations::Task
+  has_attribute :email, :string
+  validates :email, presence: true
+  has_attribute :name, :string
+  has_model :user, "User"
+  delay 1.hour
+  timeout 24.hours
+  starts_with :send_invitation
+
+  action :send_invitation do
+    UserMailer.with(email: email).invitation.deliver_later
+  end
+  go_to :name_provided?
+
+  wait_until :name_provided? do
+    condition { name.present? }
+    go_to :create_user
+  end
+
+  interaction :register! do |name|
+    self.name = name
+  end.when :name_provided?
+
+  action :create_user do
+    self.user = User.create! name: name
+  end
+  go_to :done
+
+  result :done
+end
+```
+
+The registration process performs an action, `send_invitation` and then waits until a `name_provided?`.  A `wait handler` is similar to a `decision handler` but if the conditions are not met, instead of raising an error, the task goes to sleep.  A background process (see bwlow) wakes the task periodically to reevaluate the condition.  Or, an `interaction` can be triggered; this is similar to an action because it does something, but it also immediately reevaluates the current wait handler.  So in this case, when the `register!` interaction completes, the `name_provided?` wait handler is reevaluated and, because the `name` has now been supplied, it can move on to the `create_user` state.  
+
+When a task reaches a wait handler, it goes to sleep and expects to be woken up at some point in the future.  You can specify how often it is woken up by adding a `delay 10.minutes` declaration to your class.  The default is `1.minute`.  Likewise, if a task does not change state after a certain period it fails with an `Operations::Timeout` exception.  You can set this timeout by declaring `timeout 48.hours` (the default is `24.hours`).  
+
+Interactions are defined with the `interaction` declaration and they always wake the task.  The handler adds a new method to the task object - so in this case you would call `@user_registration.register! "Alice"` - this would wake the task, call the `register!` interaction handler, which in turn sets the name to `Alice`.  The wait handler would then be evaluated and the "create_user" and "done" states would be executed.  Also note that the `register!` interaction can only be called when the state is `name_provided?`.  This means that, if Alice registers, then someone hacks her email and uses the same invitation again, when the `register!` method is called, it will fail with an `Operations::InvalidState` exception - because Alice has already registered, the current state is "done" meaning this interaction cannot be called. 
+
+In order for `wait handlers` and `interactions` to work, you need to wake up the sleeping tasks by calling `Operations::Task.wake_sleeping`.  You can add this to a rake task that is triggered by a cron job, or if you use SolidQueue you can add it to your `recurring.yml`.  Alternatively, you can run `Operations::Task::Runner.start` - this is a long running process that wakes sleeping tasks every 30 seconds (and deletes old tasks).  
 
 ### Sub tasks
 
-Any operation can be composed out of other operations and can therefore call other subtasks.  
+The mechanics of this are in place, as of 0.7.0 but it's not tested yet.  
 
-```ruby
-class PrepareDownload < Operations::Task 
-  inputs :user, :document 
-  starts_with :get_authorisation
-  
-  action :get_authorisation do 
-    inputs :user, :document 
-
-    result = call GetAuthorisation, user: user, document: document 
-    self.authorised = result[:authorised]
-  end
-  go_to :whatever_happens_next
-end
-```
-If the sub-task succeeds, `call` returns the results from the sub-task.  If it fails, then any exceptions are re-raised.  
-
-You can also access the results in a block: 
-```ruby
-class PrepareDownload < Operations::Task 
-  inputs :user, :document 
-  starts_with :get_authorisation
-  
-  action :get_authorisation do 
-    inputs :user, :document 
-
-    call GetAuthorisation, user: user, document: document do |results|
-      self.authorised = results[:authorised]
-    end
-  end
-  go_to :whatever_happens_next
-end
-```
-
-### Agents
-
-So far, we've only defined tasks that run and complete immediately.  However, [agents](/docs/agents.md) run over a long period of time and can respond to external interactions.  
 
 ## Testing
 
-Tasks represent complex flows of logic, so each state can be [tested in isolation](/docs/testing.md).
-
-## Visualisation
-
-There is a very simple [visualisation tool](/docs/visualisation.md) built into the gem. 
+TBD
 
 ## Installation
 Step 1: Add the gem to your Rails application's Gemfile:

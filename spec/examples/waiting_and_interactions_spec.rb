@@ -25,7 +25,6 @@ module Examples
       interaction :register! do |name|
         self.name = name
       end
-      go_to :name_provided?
 
       action :create_user do
         self.user = User.create! name: name
@@ -47,6 +46,7 @@ module Examples
       expect(registration).to be_completed
       expect(registration.user).to_not be_nil
       expect(registration.user.name).to eq "Bob Badger"
+      expect(registration).to be_in "done"
     end
 
     it "sets the wake up time and timeout" do
