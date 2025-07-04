@@ -3,6 +3,8 @@ module Operations
     include HasAttributes
     include Plan
     include Index
+    include Testing
+
     scope :ready_to_wake, -> { ready_to_wake_at(Time.current) }
     scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
     scope :expired, -> { expires_at(Time.current) }
@@ -26,7 +28,7 @@ module Operations
     def call(immediate: false)
       while active?
         Rails.logger.debug { "--- #{self}: #{current_state}" }
-        (handler_for(current_state).immediate? || immediate) ? handler_for(current_state).call(self) : go_to_sleep!
+        (handler_for(current_state).immediate? || immediate) ? call_handler : go_to_sleep!
       end
     rescue => ex
       record_error! ex
@@ -40,6 +42,8 @@ module Operations
     def start(task_class, **attributes) = task_class.later(**attributes.merge(parent: self))
 
     def record_error!(exception) = update!(task_status: "failed", exception_class: exception.class.to_s, exception_message: exception.message.to_s, exception_backtrace: exception.backtrace)
+
+    def call_handler = handler_for(current_state).call(self)
 
     private def go_to_sleep! = update!(default_times.merge(task_status: "waiting"))
 

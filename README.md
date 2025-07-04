@@ -280,7 +280,30 @@ However, it also means that your database table could fill up with junk that you
 
 ## Testing
 
-TBD
+Because the flow for a task may be complex, it's best to test each state in isolation.  To help with this, there is a `test` method on the `Operations::Task` class, which creates a task, in your desired state, then runs the appropriate handler.  Then you can check that it has done what you expect.  
+
+```ruby 
+class WeekendChecker < Operations::Task
+  has_attribute :day_of_week, :string, default: "Monday"
+  validates :day_of_week, presence: true
+  starts_with :is_it_the_weekend?
+
+  decision :is_it_the_weekend? do
+    condition { %w[Saturday Sunday].include? day_of_week }
+    if_true :weekend
+    if_false :weekday
+  end
+
+  result :weekend
+  result :weekday
+end
+
+task = WeekendChecker.verify :is_it_the_weekend?, day_of_week: "Saturday"
+expect(task).to be_in :weekend
+
+task = WeekendChecker.verify :is_it_the_weekend?, day_of_week: "Wednesday"
+expect(task).to be_in :weekday
+```
 
 ## Installation
 Step 1: Add the gem to your Rails application's Gemfile:
