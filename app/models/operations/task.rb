@@ -26,7 +26,9 @@ module Operations
     has_attribute :exception_backtrace, :string
 
     def call(immediate: false)
-      while active?
+      state = ""
+      while active? && (state != current_state)
+        state = current_state
         Rails.logger.debug { "--- #{self}: #{current_state}" }
         (handler_for(current_state).immediate? || immediate) ? call_handler : go_to_sleep!
       end

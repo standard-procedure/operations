@@ -9,7 +9,7 @@ In effect, that flowchart is a state machine - with "decision states" and "actio
 
 ## Breaking Change
 
-Version 0.7.0 includes breaking changes.  There are migrations which rename your existing `operations_tasks` and `operations_task_participants` tables (so the data is not deleted), then a new `operations_tasks` table is created with a simplified structure.  
+Version 0.7.0 includes breaking changes.  When you run `bin/rails operations:migrations:install` one of the migrations will drop your existing `operations_tasks` and `operations_task_participants` tables.  If you need the historic data in those tables, then edit the migration to rename the tables instead.  Also you will need to update your tests to use the new `test` method. 
 
 ## Usage
 
@@ -193,7 +193,7 @@ end
 ```
 #### Wait handlers 
 
-The registration process performs an action, `send_invitation` and then waits until a `name_provided?`.  A `wait handler` is similar to a `decision handler` but if the conditions are not met, instead of raising an error, the task goes to sleep.  A background process (see bwlow) wakes the task periodically to reevaluate the condition.  Or, an `interaction` can be triggered; this is similar to an action because it does something, but it also immediately reevaluates the current wait handler.  So in this case, when the `register!` interaction completes, the `name_provided?` wait handler is reevaluated and, because the `name` has now been supplied, it can move on to the `create_user` state.  
+The registration process performs an action, `send_invitation` and then waits until a `name_provided?`.  A `wait handler` is similar to a `decision handler` but if the conditions are not met, instead of raising an error, the task goes to sleep.  A background process (see below) wakes the task periodically to reevaluate the condition.  Or, an `interaction` can be triggered; this is similar to an action because it does something, but it also immediately reevaluates the current wait handler.  So in this case, when the `register!` interaction completes, the `name_provided?` wait handler is reevaluated and, because the `name` has now been supplied, it can move on to the `create_user` state.  
 
 When a task reaches a wait handler, it goes to sleep and expects to be woken up at some point in the future.  You can specify how often it is woken up by adding a `delay 10.minutes` declaration to your class.  The default is `1.minute`.  Likewise, if a task does not change state after a certain period it fails with an `Operations::Timeout` exception.  You can set this timeout by declaring `timeout 48.hours` (the default is `24.hours`).  
 
