@@ -342,7 +342,7 @@ GEM
     standard_procedure_fabrik (0.2.5)
       activesupport (>= 6.0.0)
       ostruct
-    standard_procedure_has_attributes (0.2.0)
+    standard_procedure_has_attributes (0.2.1)
       activesupport (>= 7.1)
       globalid (~> 1.2)
     stringio (3.1.7)
