@@ -298,10 +298,10 @@ class WeekendChecker < Operations::Task
   result :weekday
 end
 
-task = WeekendChecker.verify :is_it_the_weekend?, day_of_week: "Saturday"
+task = WeekendChecker.test :is_it_the_weekend?, day_of_week: "Saturday"
 expect(task).to be_in :weekend
 
-task = WeekendChecker.verify :is_it_the_weekend?, day_of_week: "Wednesday"
+task = WeekendChecker.test :is_it_the_weekend?, day_of_week: "Wednesday"
 expect(task).to be_in :weekday
 ```
 
