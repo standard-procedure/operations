@@ -31,14 +31,14 @@ module Operations
       while active? && (state != current_state)
         state = current_state
         Rails.logger.debug { "--- #{self}: #{current_state}" }
-        (handler_for(current_state).immediate? || immediate) ? call_handler : go_to_sleep!
+        (immediate || state_is_immediate?(current_state)) ? call_handler : go_to_sleep!
       end
     rescue => ex
       record_error! ex
       raise ex
     end
 
-    def go_to(next_state) = update! current_state: next_state
+    def go_to(next_state) = update! current_state: next_state, task_status: (state_is_immediate?(next_state) ? "active" : "waiting")
 
     def wake_up! = timeout_expired? ? call_timeout_handler : activate_and_call
 
@@ -47,6 +47,8 @@ module Operations
     def record_error!(exception) = update!(task_status: "failed", exception_class: exception.class.to_s, exception_message: exception.message.to_s, exception_backtrace: exception.backtrace)
 
     def call_handler = handler_for(current_state).call(self)
+
+    private def state_is_immediate?(state) = handler_for(state).immediate?
 
     private def go_to_sleep! = update!(default_times.merge(task_status: "waiting"))
 
