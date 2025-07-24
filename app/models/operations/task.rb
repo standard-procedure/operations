@@ -5,17 +5,18 @@ module Operations
     include Index
     include Testing
 
+    scope :active, -> { where(status: %w[active waiting]) }
     scope :ready_to_wake, -> { ready_to_wake_at(Time.current) }
-    scope :ready_to_wake_at, ->(time) { where(wakes_at: ..time) }
+    scope :ready_to_wake_at, ->(time) { waiting.where(wakes_at: ..time) }
     scope :expired, -> { expires_at(Time.current) }
-    scope :expired_at, ->(time) { where(expires_at: ..time) }
+    scope :expired_at, ->(time) { waiting.where(expires_at: ..time) }
     scope :ready_to_delete, -> { ready_to_delete_at(Time.current) }
     scope :ready_to_delete_at, ->(time) { where(delete_at: ..time) }
 
     # Task hierarchy relationships
     belongs_to :parent, class_name: "Operations::Task", optional: true
     has_many :sub_tasks, class_name: "Operations::Task", foreign_key: "parent_id", dependent: :nullify
-    has_many :active_sub_tasks, -> { where(status: ["active", "waiting"]) }, class_name: "Operations::Task", foreign_key: "parent_id"
+    has_many :active_sub_tasks, -> { active }, class_name: "Operations::Task", foreign_key: "parent_id"
     has_many :failed_sub_tasks, -> { failed }, class_name: "Operations::Task", foreign_key: "parent_id"
     has_many :completed_sub_tasks, -> { completed }, class_name: "Operations::Task", foreign_key: "parent_id"
 
