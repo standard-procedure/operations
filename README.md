@@ -217,6 +217,18 @@ If you want the task to be run completely in the background (so it sleeps immedi
 
 [Example wait and interaction handlers](spec/examples/waiting_and_interactions_spec.rb)
 
+Because background tasks are woken using ActiveJob, you may wish to control exactly how these jobs are handled.  
+
+You can specify which ActiveJob queue they are placed on (with the default value being `:default`) - this is the equivalent of setting `queue_as :my_queue` in ActiveJob.  And you can even specify which queue adapter they use (if, for example, you want to use SolidQueue for most of your background jobs, but Sidekiq for a certain subset of tasks). 
+
+```ruby
+class MyBackgroundOperation < Operations::Task 
+  queue :low_priority
+  runs_on :sidekiq
+  # ...
+end
+```
+
 ### Sub tasks
 
 If your task needs to start sub-tasks, it can use the `start` method, passing the sub-task class and arguments.  

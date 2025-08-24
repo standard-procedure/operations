@@ -64,16 +64,34 @@ module Operations
       raise ex
     end
 
-    def self.call(task_status: "active", **attributes) = create!(attributes.merge(task_status: task_status, current_state: initial_state).merge(default_times)).tap { |t| t.call }
+    class << self
+      def call(task_status: "active", **attributes)
+        create!(attributes.merge(task_status: task_status, current_state: initial_state).merge(default_times)).tap do |t|
+          t.call
+        end
+      end
+      alias_method :perform_now, :call
 
-    def self.later(**attributes) = call(task_status: "waiting", **attributes)
+      def later(**attributes) = call(task_status: "waiting", **attributes)
+      alias_method :perform_later, :later
 
-    def self.perform_now(...) = call(...)
+      def wake_sleeping
+        adapter = Operations::WakeTaskJob.queue_adapter
+        begin
+          Task.ready_to_wake.find_each do |task|
+            Operations::WakeTaskJob.queue_adapter = task.class.queue_adapter
+            Operations::WakeTaskJob.perform_later task
+          end
+        ensure
+          Operatives::WakeTaskJob.queue_adapter = adapter
+        end
+      end
 
-    def self.perform_later(...) = later(...)
-
-    def self.wake_sleeping = Task.ready_to_wake.find_each { |t| Operations::WakeTaskJob.perform_later(t) }
-
-    def self.delete_old = Task.ready_to_delete.find_each { |t| Operations::DeleteOldTaskJob.perform_later(t) }
+      def delete_old
+        Task.ready_to_delete.find_each do |t|
+          Operations::DeleteOldTaskJob.perform_later(t)
+        end
+      end
+    end
   end
 end

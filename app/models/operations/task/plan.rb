@@ -32,6 +32,12 @@ module Operations::Task::Plan
 
     def timeout(value) = @execution_timeout = value
 
+    def queue(value) = @queue_as = value
+
+    def runs_on(value) = @queue_adapter ||= value
+    alias_method :runs, :runs_on
+    alias_method :runs_using, :runs_on
+
     def delete_after(value) = @deletion_time = value
 
     def on_timeout(&handler) = @on_timeout = handler
@@ -39,6 +45,10 @@ module Operations::Task::Plan
     def background_delay = @background_delay ||= 1.minute
 
     def execution_timeout = @execution_timeout ||= 24.hours
+
+    def queue_as = @queue_as ||= :default
+
+    def queue_adapter = @queue_adapter ||= Operations::WakeTaskJob.queue_adapter
 
     def timeout_handler = @on_timeout
 
