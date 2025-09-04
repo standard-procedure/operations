@@ -83,7 +83,7 @@ module Operations
             Operations::WakeTaskJob.perform_later task
           end
         ensure
-          Operatives::WakeTaskJob.queue_adapter = adapter
+          Operations::WakeTaskJob.queue_adapter = adapter
         end
       end
 
