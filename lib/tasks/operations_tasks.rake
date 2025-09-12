@@ -1,4 +1,4 @@
-desc "Start the Agent Runner process"
+desc "Start the Task Runner process"
 task :agent_runner do
-  Operations::Agent::Runner.start
+  Operations::Task::Runner.start
 end
