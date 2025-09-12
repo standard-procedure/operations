@@ -75,6 +75,8 @@ expect(task.available_friends).to_not be_empty
 ```
 We define the `attributes` that the task contains and its starting `state`.  
 
+Attributes are stored in a JSON field within the table - either as simple data types (`has_attribute :count, :integer, default: 0`) or as a reference to another ActiveRecord model (`has_model :user` or `has_model :submitted_by, "User"` if you need to restrict the model to a particular class).  This uses the [HasAttributes](https://github.com/standard-procedure/has_attributes) gem.  
+
 The initial state is `what_day_is_it?` which is a _decision_ that checks the date supplied and moves to a different state based upon the conditions defined.  `buy_food`, `buy_drinks` and `invite_friends` are _actions_ which do things.  Whereas `party!`, `relax` and `go_to_work` are _results_ which end the task.  
 
 When you `call` the task, it runs through the process immediately and either fails with an exception or completes immediately.  You can test `completed?` or `failed?` and check the `current_state`.  
@@ -93,18 +95,18 @@ An action handler does some work, and then transitions to another state. Once th
 
 ```ruby 
 action :have_a_party do
-  self.food = task.buy_some_food_for(number_of_guests)
-  self.beer = task.buy_some_beer_for(number_of_guests)
-  self.music = task.plan_a_party_playlist
+  self.food = buy_some_food_for(number_of_guests)
+  self.beer = buy_some_beer_for(number_of_guests)
+  self.music = plan_a_party_playlist
 end
 go_to :send_invitations
 ```
 This is the same as: 
 ```ruby 
 action :have_a_party do
-  self.food = task.buy_some_food_for(number_of_guests)
-  self.beer = task.buy_some_beer_for(number_of_guests)
-  self.music = task.plan_a_party_playlist
+  self.food = buy_some_food_for(number_of_guests)
+  self.beer = buy_some_beer_for(number_of_guests)
+  self.music = plan_a_party_playlist
 end.then :send_invitations
 ```
 
@@ -361,5 +363,6 @@ The gem is available as open source under the terms of the [LGPL License](/LICEN
 - [x] Add wait for sub-tasks capabilities
 - [x] Add visualization export for task flows
 - [ ] Replace ActiveJob with a background process
-- [ ] Rename StateManagent with Plan
-- [ ] Add interactions
+- [x] Rename StateManagent with Plan
+- [x] Add interactions
+- [x] Specify ActiveJob queues and adapters
