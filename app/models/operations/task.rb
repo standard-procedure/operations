@@ -38,7 +38,9 @@ module Operations
       raise ex
     end
 
-    def go_to(next_state) = update! current_state: next_state, task_status: (state_is_immediate?(next_state) ? "active" : "waiting")
+    def go_to(next_state)
+      update! current_state: next_state, task_status: (state_is_immediate?(next_state) ? "active" : "waiting")
+    end
 
     def wake_up! = timeout_expired? ? call_timeout_handler : activate_and_call
 
@@ -50,7 +52,9 @@ module Operations
 
     private def state_is_immediate?(state) = handler_for(state).immediate?
 
-    private def go_to_sleep! = update!(default_times.merge(task_status: "waiting"))
+    private def go_to_sleep!
+      update!(sleep_times.merge(task_status: "waiting"))
+    end
 
     private def activate_and_call
       active!

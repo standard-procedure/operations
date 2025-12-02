@@ -53,6 +53,12 @@ module Examples
       registration = UserRegistrationExample.call email: "alice@example.com"
 
       expect(registration).to be_waiting
+      # initial wake time is immediate
+      expect(registration.wakes_at).to be < 1.minute.from_now
+      expect(registration.expires_at).to be > 23.hours.from_now
+      registration.send :go_to_sleep!
+      expect(registration).to be_waiting
+      # wake time after sleep is in one hour
       expect(registration.wakes_at).to be > 59.minutes.from_now
       expect(registration.expires_at).to be > 23.hours.from_now
     end

@@ -62,13 +62,16 @@ module Operations::Task::Plan
 
     def interaction_handler_for(name) = interaction_handlers[name.to_s]
 
-    def default_times = {wakes_at: background_delay.from_now, expires_at: execution_timeout.from_now, delete_at: deletion_time.from_now}
+    def sleep_times = {wakes_at: background_delay.from_now, expires_at: execution_timeout.from_now, delete_at: deletion_time.from_now}
+
+    def default_times = {wakes_at: Time.now, expires_at: execution_timeout.from_now, delete_at: deletion_time.from_now}
   end
 
   def in?(state) = current_state == state.to_s
   alias_method :waiting_until?, :in?
 
   private def handler_for(state) = self.class.handler_for(state)
+  private def sleep_times = self.class.sleep_times
   private def default_times = self.class.default_times
   private def background_delay = self.class.background_delay
   private def execution_timeout = self.class.execution_timeout
