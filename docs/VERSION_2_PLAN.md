@@ -11,6 +11,11 @@ This document outlines the plan for building Operations V2, a complete architect
 - Implement pluggable executor adapters (inline default)
 - External adapters can be separate gems (ActiveRecord, ActiveJob, Async, etc.)
 
+**Naming Convention:**
+- Gem name: `standard_procedure_operations` (following standard_procedure_* pattern)
+- Namespace: `Operations::` (classes like `Operations::Task`, `Operations::Storage::Memory`)
+- Adapter gems: `operations-activerecord`, `operations-activejob`, `operations-async` (no standard_procedure prefix for optional adapters)
+
 ## Current Architecture (V1)
 
 ### Dependencies
@@ -1062,14 +1067,11 @@ module Operations
 end
 ```
 
-## Async Runner
+## Runner
 
-For standalone async operation, inspired by async-container:
+The Runner is a **delegator** that handles periodic task waking and cleanup, delegating execution to the configured executor. This means you can use the same runner script whether using ActiveJob, Async, or Inline executors.
 
 ```ruby
-require 'async'
-require 'async/barrier'
-
 module Operations
   class Runner
     def initialize(
@@ -1084,23 +1086,13 @@ module Operations
     def start
       @running = true
 
-      Async do |task|
-        barrier = Async::Barrier.new
+      loop do
+        break unless @running
 
-        # Wake sleeping tasks periodically
-        barrier.async do
-          wake_loop
-        end
+        wake_sleeping_tasks
+        delete_old_tasks if should_cleanup?
 
-        # Clean up old tasks periodically
-        barrier.async do
-          cleanup_loop
-        end
-
-        # Wait for all tasks
-        barrier.wait
-      ensure
-        @running = false
+        sleep @wake_interval
       end
     end
 
@@ -1110,26 +1102,13 @@ module Operations
 
     private
 
-    def wake_loop
-      while @running
-        wake_sleeping_tasks
-        sleep @wake_interval
-      end
-    end
-
-    def cleanup_loop
-      while @running
-        delete_old_tasks
-        sleep @cleanup_interval
-      end
-    end
-
     def wake_sleeping_tasks
       tasks = Operations.storage.sleeping_tasks
 
       tasks.each do |task|
         begin
-          task.wake_up!
+          # Delegate to configured executor
+          Operations.executor.wake(task)
         rescue => e
           warn "Error waking task #{task.id}: #{e.message}"
         end
@@ -1139,18 +1118,27 @@ module Operations
     end
 
     def delete_old_tasks
+      return unless should_cleanup?
+
       count = Operations.storage.delete_old(before: Time.now.utc)
       warn "Deleted #{count} old tasks" if count > 0
+      @last_cleanup = Time.now
       count
+    end
+
+    def should_cleanup?
+      @last_cleanup.nil? || (Time.now - @last_cleanup) >= @cleanup_interval
     end
   end
 end
 ```
 
-Usage:
+### Usage Examples
+
+**With Async executor:**
 
 ```ruby
-# Standalone script
+# bin/operations-runner
 require 'operations'
 require 'operations/runner'
 
@@ -1163,7 +1151,33 @@ runner = Operations::Runner.new(wake_interval: 30, cleanup_interval: 3600)
 runner.start
 ```
 
-For multi-process scaling, use async-container:
+**With ActiveJob executor:**
+
+```ruby
+# bin/operations-runner (Rails app)
+require_relative '../config/environment'
+
+# Configuration in config/initializers/operations.rb sets ActiveJob executor
+runner = Operations::Runner.new(wake_interval: 30)
+runner.start
+```
+
+**With Inline executor (testing):**
+
+```ruby
+# spec/support/operations_runner.rb
+RSpec.configure do |config|
+  config.before(:suite) do
+    Thread.new do
+      Operations::Runner.new(wake_interval: 1).start
+    end
+  end
+end
+```
+
+### Multi-Process Scaling
+
+For production deployments with Async executor, use async-container:
 
 ```ruby
 require 'async/container'
@@ -1181,6 +1195,8 @@ end
 
 container.wait
 ```
+
+**Key benefit:** The same `Operations::Runner` works with any executor. Switch from ActiveJob to Async by changing configuration, not code.
 
 ## Configuration
 
