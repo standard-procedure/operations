@@ -94,8 +94,8 @@ module Operations
       # Execution methods
       def self.call(**attributes)
         task = new(**attributes)
+        Operations::V2.storage.save(task)  # Save first to ensure task has ID for sub-tasks
         Operations::V2.executor.call(task)
-        Operations::V2.storage.save(task)
         task
       end
 

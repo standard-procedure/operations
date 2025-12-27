@@ -93,11 +93,19 @@ module Operations
           attribute_definitions[name] = {type: type, options: options}
 
           define_method(name) do
-            @attributes[name.to_s] || options[:default]
+            # Use key? to handle false values correctly (can't use || for booleans)
+            @attributes.key?(name.to_s) ? @attributes[name.to_s] : options[:default]
           end
 
           define_method("#{name}=") do |value|
             @attributes[name.to_s] = value
+          end
+
+          # Add predicate method for boolean attributes
+          if type == :boolean
+            define_method("#{name}?") do
+              !!send(name)
+            end
           end
         end
 

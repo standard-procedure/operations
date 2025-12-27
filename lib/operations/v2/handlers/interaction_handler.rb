@@ -8,9 +8,12 @@ module Operations
           @implementation = implementation
           @valid_states = []
 
+          # Capture name in local variable for closure
+          interaction_name = name.to_s
+
           # Define the interaction method on the task class
           task_class.define_method(name) do |*args|
-            handler = self.class.interaction_handler_for(@name.to_s)
+            handler = self.class.interaction_handler_for(interaction_name)
             handler.call(self, *args)
           end
         end
