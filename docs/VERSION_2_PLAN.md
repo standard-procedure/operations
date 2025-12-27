@@ -85,6 +85,7 @@ end
 3. **Thread-Safe** - Safe for multi-threaded/multi-process deployments
 4. **Serialization-Based** - Tasks convert to/from Hash for storage flexibility
 5. **Backward Compatible** - ActiveRecord + ActiveJob adapters maintain Rails compatibility
+6. **YAGNI (You Aren't Gonna Need It)** - Build concrete implementations first, extract abstractions only when adding second implementation
 
 ### Core Concept
 
@@ -1359,59 +1360,118 @@ end
 
 ## Development Phases
 
-### Phase 1: Core Infrastructure (Weeks 1-3)
+Following **YAGNI (You Aren't Gonna Need It)** principles, we build concrete implementations first, then extract abstractions only when needed.
+
+### Phase 1: Core Working Implementation (Weeks 1-3)
+
+**Goal:** Remove Rails dependencies and prove the DSL still works
+
 - [ ] Set up gem structure without Rails Engine
-- [ ] Implement core Task class as PORO
+- [ ] Implement core Task class as PORO with serialization (`to_h`/`restore_from`)
 - [ ] Build DSL module with all existing DSL methods
 - [ ] Create handler classes (Action, Decision, Wait, Result, Interaction)
 - [ ] Implement state machine execution logic
-- [ ] Add serialization (`to_h`) and deserialization (`restore_from`)
+- [ ] **Build concrete Memory storage (no abstraction yet)** - simple Hash-based storage
+- [ ] **Build concrete Inline executor (no abstraction yet)** - direct synchronous execution
+- [ ] **Port ALL existing V1 tests** - prove DSL is backward compatible
+- [ ] **Add simple configuration** - `Operations.storage = MemoryStorage.new`
 
-### Phase 2: Storage Adapters (Weeks 4-5)
-- [ ] Define storage adapter interface (Base class)
-- [ ] Implement Memory storage adapter
-- [ ] Implement ActiveRecord storage adapter
-- [ ] Add storage adapter tests
-- [ ] Ensure thread-safety
+**Success criteria:** All V1 tests pass with Memory + Inline implementations
 
-### Phase 3: Executor Adapters (Week 6)
-- [ ] Define executor adapter interface (Base class)
-- [ ] Implement Inline executor
-- [ ] Implement Async executor
-- [ ] Implement ActiveJob executor
-- [ ] Add executor adapter tests
+**Why this phase is testable:** We have working storage and execution, so we can actually run tasks and verify behavior.
 
-### Phase 4: Configuration & Runner (Week 7)
-- [ ] Build configuration system
-- [ ] Create Operations.configure API
-- [ ] Implement Async runner
+### Phase 2: Extract Abstractions + ActiveRecord (Weeks 4-5)
+
+**Goal:** Extract adapter pattern when we need a second implementation
+
+- [ ] Extract `Storage::Base` interface from Memory implementation
+- [ ] Refactor Memory to implement Base interface
+- [ ] Build ActiveRecord storage adapter implementing Base
+- [ ] Extract `Executor::Base` interface from Inline implementation
+- [ ] Refactor Inline to implement Base interface
+- [ ] Update configuration to `Operations.configure` block
+- [ ] Test both storage adapters with same test suite
+- [ ] Ensure thread-safety in Memory adapter
+
+**Success criteria:** Can swap between Memory and ActiveRecord storage seamlessly
+
+**Why extract now:** We have two implementations, so we know what the abstraction needs to support.
+
+### Phase 3: Additional Executors (Week 6)
+
+**Goal:** Add async execution options
+
+- [ ] Build Async executor implementing Executor::Base
+- [ ] Build ActiveJob executor implementing Executor::Base
+- [ ] Create Jobs for ActiveJob executor (ExecuteTaskJob, WakeTaskJob)
+- [ ] Add executor tests
+- [ ] Verify all executor types work with both storage types
+
+**Success criteria:** Can run tasks with any combination of storage + executor
+
+### Phase 4: Runner & Background Processing (Week 7)
+
+**Goal:** Enable standalone operation
+
+- [ ] Implement Operations::Runner using async gem
+- [ ] Add wake_sleeping_tasks functionality
+- [ ] Add delete_old_tasks functionality
 - [ ] Add runner tests
+- [ ] Document runner usage
+- [ ] Test runner with different adapter combinations
 
-### Phase 5: Testing Support (Week 8)
-- [ ] Port existing test helpers
-- [ ] Ensure `test` class method works
-- [ ] Port RSpec matchers
-- [ ] Add integration tests
+**Success criteria:** Can run standalone process that wakes tasks and cleans up old data
 
-### Phase 6: Documentation (Weeks 9-10)
+### Phase 5: Documentation & Examples (Weeks 8-9)
+
+**Goal:** Make V2 usable
+
 - [ ] Update README for V2
+- [ ] Write migration guide from V1 to V2
 - [ ] Write adapter development guide
-- [ ] Create migration guide from V1 to V2
+- [ ] Create example Rails app using ActiveRecord + ActiveJob
+- [ ] Create example standalone app using Memory + Async
 - [ ] Add API documentation
-- [ ] Create example applications
+- [ ] Port RSpec matchers and ensure `test` method is documented
 
-### Phase 7: External Adapter Gems (Weeks 11-12)
+**Success criteria:** Someone can upgrade from V1 or start fresh with V2 using docs
+
+### Phase 6: External Adapter Gems (Weeks 10-11)
+
+**Goal:** Separate optional dependencies
+
 - [ ] Extract operations-activerecord gem
 - [ ] Extract operations-activejob gem
 - [ ] Extract operations-async gem
+- [ ] Update core gem to remove optional dependencies
 - [ ] Document each adapter gem
+- [ ] Test installation and configuration of each gem
 
-### Phase 8: Polish & Release (Weeks 13-14)
-- [ ] Performance testing
+**Success criteria:** Core gem has zero Rails dependencies, adapters are opt-in
+
+### Phase 7: Polish & Beta (Week 12)
+
+**Goal:** Production ready
+
+- [ ] Performance testing (compare to V1)
 - [ ] Security audit
+- [ ] Fix any issues found in beta testing
 - [ ] Final documentation review
-- [ ] Beta release for testing
-- [ ] Stable 2.0 release
+- [ ] Beta release for community testing
+
+**Success criteria:** No regressions, performance >= V1
+
+### Phase 8: Stable Release (Week 13)
+
+**Goal:** Ship it!
+
+- [ ] Address beta feedback
+- [ ] Finalize CHANGELOG
+- [ ] Release 2.0.0 stable
+- [ ] Announce release
+- [ ] Monitor for issues
+
+**Success criteria:** V2 is released and stable
 
 ## Success Criteria
 
@@ -1482,4 +1542,6 @@ Operations V2 represents a fundamental shift from a Rails-specific engine to a f
 - **Desktop/Electron apps** - Use PouchDB + Inline adapters
 - **Testing** - Use Memory + Inline adapters
 
-The adapter architecture ensures applications only include dependencies they need, while the unchanged DSL means existing V1 users can migrate smoothly. This plan provides a clear roadmap for development with realistic timelines and measurable success criteria.
+The development approach follows **YAGNI principles**: Phase 1 delivers a working, testable implementation with Memory storage and Inline execution. Only in Phase 2, when adding ActiveRecord support, do we extract the adapter interfaces. This ensures Phase 1 is testable (all V1 tests can run) and prevents over-engineering.
+
+The adapter architecture ensures applications only include dependencies they need, while the unchanged DSL means existing V1 users can migrate smoothly. This plan provides a clear roadmap for development with realistic timelines (13 weeks) and measurable success criteria at each phase.
