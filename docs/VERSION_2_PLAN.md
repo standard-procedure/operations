@@ -12,9 +12,18 @@ This document outlines the plan for building Operations V2, a complete architect
 - External adapters can be separate gems (ActiveRecord, ActiveJob, Async, etc.)
 
 **Naming Convention:**
-- Gem name: `standard_procedure_operations` (following standard_procedure_* pattern)
+- Core gem: `standard_procedure_operations` (following standard_procedure_* pattern)
 - Namespace: `Operations::` (classes like `Operations::Task`, `Operations::Storage::Memory`)
-- Adapter gems: `operations-activerecord`, `operations-activejob`, `operations-async` (no standard_procedure prefix for optional adapters)
+- Adapter gems: `operations-activerecord`, `operations-activejob`, `operations-async`, `operations-redis`
+  - No `standard_procedure` prefix for optional adapters
+  - Keeps adapter gems lightweight and focused
+
+**Repository Structure: Mono-Repo**
+- All gems in single repository (see [docs/MONO_REPO.md](docs/MONO_REPO.md))
+- Shared version number in `lib/operations/version.rb`
+- Major.minor versions synchronized across all gems
+- Adapters depend on core with `~>` constraint
+- Single release process via `bin/release` script
 
 ## Current Architecture (V1)
 
@@ -1452,18 +1461,26 @@ Following **YAGNI (You Aren't Gonna Need It)** principles, we build concrete imp
 
 **Success criteria:** Someone can upgrade from V1 or start fresh with V2 using docs
 
-### Phase 6: External Adapter Gems (Weeks 10-11)
+### Phase 6: Adapter Gems (Weeks 10-11)
 
-**Goal:** Separate optional dependencies
+**Goal:** Complete adapter gem implementations
 
-- [ ] Extract operations-activerecord gem
-- [ ] Extract operations-activejob gem
-- [ ] Extract operations-async gem
-- [ ] Update core gem to remove optional dependencies
+**Note:** We use a **mono-repo** structure (see [docs/MONO_REPO.md](MONO_REPO.md)) with:
+- All gems in same repository
+- Synchronized major.minor versions
+- Single release process
+- Shared version in `lib/operations/version.rb`
+
+**Tasks:**
+- [ ] Implement operations-activerecord gem
+- [ ] Implement operations-activejob gem
+- [ ] Implement operations-async gem
+- [ ] Implement operations-redis gem (optional)
 - [ ] Document each adapter gem
 - [ ] Test installation and configuration of each gem
+- [ ] Verify version synchronization works
 
-**Success criteria:** Core gem has zero Rails dependencies, adapters are opt-in
+**Success criteria:** All adapter gems work, core gem has zero Rails dependencies
 
 ### Phase 7: Polish & Beta (Week 12)
 

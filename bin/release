@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+
+# Release script for Operations mono-repo
+# Builds and pushes all gems with synchronized versions
+
+require_relative "../lib/operations/version"
+
+version = Operations::VERSION
+gems = [
+  {name: "standard_procedure_operations", path: "."},
+  {name: "operations-activerecord", path: "adapters/activerecord"},
+  {name: "operations-activejob", path: "adapters/activejob"},
+  {name: "operations-async", path: "adapters/async"},
+  {name: "operations-redis", path: "adapters/redis"}
+]
+
+def run(command, error_message)
+  system(command) || abort(error_message)
+end
+
+puts "=" * 80
+puts "Operations Gem Release - Version #{version}"
+puts "=" * 80
+puts
+
+# Confirm release
+print "Release all gems at version #{version}? [y/N] "
+response = gets.chomp
+abort("Release cancelled") unless response.downcase == "y"
+
+puts
+
+# Build and push each gem
+gems.each do |gem|
+  puts "-" * 80
+  puts "Building #{gem[:name]} v#{version}"
+  puts "-" * 80
+
+  Dir.chdir(gem[:path]) do
+    # Build
+    gemspec = Dir["*.gemspec"].first
+    abort("No gemspec found in #{gem[:path]}") unless gemspec
+
+    puts "Building #{gemspec}..."
+    run("gem build #{gemspec}", "Build failed for #{gem[:name]}!")
+
+    gem_file = "#{gem[:name]}-#{version}.gem"
+    unless File.exist?(gem_file)
+      abort("Expected #{gem_file} but not found!")
+    end
+
+    # Push
+    puts "Pushing #{gem_file}..."
+    run("gem push #{gem_file}", "Push failed for #{gem[:name]}!")
+
+    # Cleanup
+    File.delete(gem_file)
+    puts "✓ #{gem[:name]} v#{version} released successfully"
+  end
+
+  puts
+end
+
+puts "=" * 80
+puts "All gems released successfully!"
+puts "=" * 80
+puts
+puts "Next steps:"
+puts "  1. git tag v#{version}"
+puts "  2. git push origin v#{version}"
+puts "  3. Create GitHub release with changelog"
+puts
